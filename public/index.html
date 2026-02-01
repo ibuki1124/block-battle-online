@@ -8,7 +8,18 @@
 </head>
 <body>
     <h1>1v1 対戦テトリス</h1>
-    <div id="status">サーバー通信待機中...</div>
+    
+    <div id="join-screen">
+        <p>対戦する部屋IDを入力してください</p>
+        <input type="text" id="room-input" placeholder="例: room1">
+        <button onclick="joinRoom()">入室 / 作成</button>
+        <p id="error-msg" style="color: red;"></p>
+    </div>
+
+    <div id="game-screen" style="display: none;">
+        <h2>部屋: <span id="current-room"></span></h2>
+        <div id="status">対戦相手を待っています...</div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
