@@ -8,38 +8,61 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
+// 部屋ごとのリトライ希望者を管理するセット
+const roomRestartState = {}; 
+
 io.on('connection', (socket) => {
-    // クライアントから「入室したい」と言われた時の処理
+    
+    // 入室処理
     socket.on('join_game', (roomId) => {
-        // その部屋に今何人いるか確認
         const room = io.sockets.adapter.rooms.get(roomId);
         const userCount = room ? room.size : 0;
 
         if (userCount < 2) {
-            // 2人未満なら入室OK
             socket.join(roomId);
-            console.log(`User: ${socket.id} が Room: ${roomId} に入室しました`);
-
-            // 本人に「入室できたよ」と伝える
             socket.emit('join_success', roomId);
-
-            // 部屋にいる全員（自分含む）に「今〇〇人いるよ」と伝える
-            io.to(roomId).emit('player_count', userCount + 1);
-
-            // もし2人になったら「対戦開始！」の合図を送る
             if (userCount + 1 === 2) {
                 io.to(roomId).emit('game_start');
             }
-
         } else {
-            // 満員なら拒否
             socket.emit('join_full');
         }
     });
 
+    // 盤面同期
+    socket.on('update_board', (data) => {
+        socket.broadcast.to(data.roomId).emit('opponent_board', data);
+    });
+
+    // ▼▼▼ 新規：ゲームオーバー通知（敗北宣言） ▼▼▼
+    socket.on('player_gameover', (roomId) => {
+        // 送ってきた本人は「負け」、部屋の他の人は「勝ち」
+        // "opponent_won" を部屋の他の人に送る
+        socket.broadcast.to(roomId).emit('opponent_won');
+    });
+
+    // ▼▼▼ 新規：リトライ要求 ▼▼▼
+    socket.on('restart_request', (roomId) => {
+        if (!roomRestartState[roomId]) {
+            roomRestartState[roomId] = new Set();
+        }
+        
+        // リクエストした人を記録
+        roomRestartState[roomId].add(socket.id);
+
+        // 部屋の人数（通常2人）全員がリトライを希望したら再開
+        const room = io.sockets.adapter.rooms.get(roomId);
+        const currentMemberCount = room ? room.size : 0;
+
+        // 全員準備OKなら
+        if (roomRestartState[roomId].size >= currentMemberCount) {
+            io.to(roomId).emit('game_start'); // 再度ゲーム開始合図
+            roomRestartState[roomId].clear(); // 状態リセット
+        }
+    });
+
     socket.on('disconnect', () => {
-        console.log('ユーザー切断:', socket.id);
-        // ※ここでの切断処理（相手に勝ったことにするなど）は後ほど実装します
+        // 切断時はリトライリストから削除するなどが必要ですが今回は省略
     });
 });
 

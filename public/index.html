@@ -2,11 +2,11 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1v1 Tetris</title>
+    <title>1v1 Tetris Online</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    
     <div id="join-screen">
         <h1>1v1 Tetris Online</h1>
         <p>対戦する部屋IDを入力してください</p>
@@ -20,43 +20,80 @@
             Room: <span id="current-room"></span> | <span id="status">Waiting...</span>
         </div>
 
-        <div class="game-container">
-            <div class="side-panel">
-                <div class="stat-box">
-                    <div class="stat-label">Hold</div>
-                    <canvas id="hold" width="100" height="100" class="preview-canvas"></canvas>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Score</div>
-                    <div id="score" class="stat-value">0</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Level</div>
-                    <div id="level" class="stat-value">1</div>
-                </div>
-                <div class="controls-guide">
-                    [←/A][→/D]: Move<br>
-                    [↑/W]: Rotate<br>
-                    [↓/S]: Soft Drop<br>
-                    [Space]: Hard Drop<br>
-                    [Shift]: Hold
-                </div>
-            </div>
-
-            <canvas id="game" width="300" height="600"></canvas>
-
-            <div class="side-panel">
-                <div class="stat-box">
-                    <div class="stat-label">Next</div>
-                    <canvas id="next" width="100" height="300" class="preview-canvas"></canvas>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-label">Lines</div>
-                    <div id="lines" class="stat-value">0</div>
-                </div>
+        <div id="result-overlay" style="display: none;">
+            <div class="result-box">
+                <h1 id="result-title">YOU WIN!</h1>
+                <button id="retry-btn" onclick="requestRetry()">もう一度遊ぶ</button>
+                <p id="retry-msg">相手の承認待ち...</p>
             </div>
         </div>
+        <div class="battle-container">
+            
+            <div class="player-area">
+                <div class="player-label">YOU</div>
+                <div class="game-container local">
+                    <div class="side-panel">
+                        <div class="stat-box">
+                            <div class="stat-label">Hold</div>
+                            <canvas id="hold" width="100" height="100" class="preview-canvas"></canvas>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Score</div>
+                            <div id="score" class="stat-value">0</div>
+                        </div>
+                    </div>
+                    <canvas id="game" width="300" height="600"></canvas>
+                    <div class="side-panel">
+                        <div class="stat-box">
+                            <div class="stat-label">Next</div>
+                            <canvas id="next" width="100" height="300" class="preview-canvas"></canvas>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Lines</div>
+                            <div id="lines" class="stat-value">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vs-divider">VS</div>
+
+            <div class="player-area">
+                <div class="player-label" style="color:#ff4444;">OPPONENT</div>
+                <div class="game-container remote">
+                    <canvas id="opponent-game" width="300" height="600"></canvas>
+                </div>
+            </div>
+
+        </div>
+        
+        <div class="controls-guide" style="margin-top:20px; text-align:center;">
+            [←/A][→/D]: Move | [↑/W]: Rotate | [↓/S]: Soft Drop | [Space]: Hard Drop | [Shift]: Hold
+        </div>
     </div>
+
+    <style>
+        #result-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .result-box {
+            text-align: center;
+            background: #1a1a2e;
+            padding: 40px;
+            border-radius: 15px;
+            border: 2px solid #4ecca3;
+        }
+        #result-title { font-size: 3rem; margin: 0 0 20px 0; color: #fff; }
+        #retry-btn { padding: 15px 30px; font-size: 1.2rem; cursor: pointer; background: #4ecca3; border: none; border-radius: 5px; font-weight: bold; }
+        #retry-btn:hover { background: #3db892; }
+        #retry-msg { color: #ccc; margin-top: 10px; display: none; }
+    </style>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>

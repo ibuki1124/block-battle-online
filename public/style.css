@@ -6,30 +6,69 @@ body {
     font-family: 'Segoe UI', sans-serif;
     text-align: center;
     margin: 0;
-    /* 画面中央寄せの調整 */
     display: flex;
     flex-direction: column;
     align-items: center;
     min-height: 100vh;
 }
 
-/* 入室画面のスタイル */
 #join-screen { margin-top: 100px; }
 input { padding: 10px; font-size: 16px; border-radius: 5px; border: none; }
 button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: var(--accent); border: none; border-radius: 5px; color: #000; font-weight: bold; }
 #error-msg { color: #ff4444; }
 
-/* ゲーム画面エリア */
-#game-wrapper { margin-top: 20px; }
-.header-info { margin-bottom: 15px; font-size: 1.2rem; color: #ccc; }
+#game-wrapper { margin-top: 20px; transform: scale(0.9); /* 全体を少し縮小して画面に収める */ }
+.header-info { margin-bottom: 10px; font-size: 1.2rem; color: #ccc; }
 
-/* 提供コードのデザイン適用 */
-.game-container { display: flex; gap: 30px; padding: 20px; background: var(--panel); border-radius: 15px; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-canvas { border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
-#game { background: #000; border: 2px solid #333; }
-.side-panel { display: flex; flex-direction: column; gap: 15px; width: 140px; }
-.stat-box { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border-left: 4px solid var(--accent); }
-.stat-label { font-size: 0.8rem; color: #888; text-transform: uppercase; }
-.stat-value { font-size: 1.4rem; font-weight: bold; font-variant-numeric: tabular-nums; }
+/* ▼▼▼ 対戦レイアウト ▼▼▼ */
+.battle-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.player-label {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: var(--accent);
+}
+
+.game-container {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
+    background: var(--panel);
+    border-radius: 15px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+}
+
+/* 自分の盤面（local） */
+.game-container.local canvas { border: 2px solid #333; background: #000; }
+
+/* 相手の盤面（remote） */
+.game-container.remote {
+    padding: 10px;
+    background: #111; /* 少し暗く */
+}
+.game-container.remote canvas {
+    width: 200px; /* 相手画面は少し小さく表示（CSSで縮小） */
+    height: 400px;
+    border: 2px solid #555;
+    background: #000;
+}
+
+.vs-divider {
+    font-size: 3rem;
+    font-weight: 900;
+    font-style: italic;
+    color: #ffcc00;
+    text-shadow: 0 0 10px orange;
+}
+
+/* サイドパネル部品 */
+.side-panel { display: flex; flex-direction: column; gap: 10px; width: 100px; }
+.stat-box { background: rgba(255,255,255,0.05); padding: 5px; border-radius: 8px; border-left: 3px solid var(--accent); }
+.stat-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+.stat-value { font-size: 1.2rem; font-weight: bold; }
 .preview-canvas { background: #000; border: 1px solid #333; border-radius: 4px; }
-.controls-guide { margin-top: auto; font-size: 0.7rem; color: #666; line-height: 1.4; text-align: left; }
