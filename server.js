@@ -1,10 +1,17 @@
+require('dotenv').config(); // 環境変数を読み込む
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
+const { createClient } = require('@supabase/supabase-js'); // 追加
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// ▼▼▼ Supabase設定 ▼▼▼
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 app.use(express.static('public'));
 
@@ -13,6 +20,9 @@ const playerNames = {};
 
 io.on('connection', (socket) => {
     
+    // ... (既存の join_game, join_practice などの処理はそのまま維持) ...
+    // ※以下、既存コードの io.on('connection') の中に追記してください
+
     // 入室
     socket.on('join_game', (roomId, playerName) => {
         const room = io.sockets.adapter.rooms.get(roomId);
@@ -24,7 +34,6 @@ io.on('connection', (socket) => {
 
             socket.emit('join_success', roomId, 'multi');
             
-            // 名前リスト更新
             const updatedRoom = io.sockets.adapter.rooms.get(roomId);
             const players = [];
             for (const id of updatedRoom) {
@@ -40,7 +49,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 練習モード
     socket.on('join_practice', (playerName) => {
         const roomId = `__solo_${socket.id}`; 
         socket.join(roomId);
@@ -50,14 +58,10 @@ io.on('connection', (socket) => {
         socket.emit('game_start');
     });
 
-    // ★修正: 切断処理（disconnectingを使う）
     socket.on('disconnecting', () => {
-        // 名前削除
         if (playerNames[socket.id]) {
             delete playerNames[socket.id];
         }
-        
-        // 自分がいた部屋に残っている人（対戦相手）に通知
         for (const roomId of socket.rooms) {
             if (roomId !== socket.id) {
                 socket.to(roomId).emit('opponent_left');
@@ -65,9 +69,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
-        // ここは空でもOK（disconnectingで処理済み）
-    });
+    socket.on('disconnect', () => {});
 
     socket.on('update_board', (data) => {
         socket.broadcast.to(data.roomId).emit('opponent_board', data);
@@ -86,30 +88,54 @@ io.on('connection', (socket) => {
             io.to(roomId).emit('game_start');
             return;
         }
-
         if (!roomRestartState[roomId]) {
             roomRestartState[roomId] = new Set();
         }
-        
         roomRestartState[roomId].add(socket.id);
-
         const room = io.sockets.adapter.rooms.get(roomId);
         const currentMemberCount = room ? room.size : 0;
-
         if (currentMemberCount < 2) {
             socket.emit('reset_waiting');
             roomRestartState[roomId].clear();
             return;
         }
-
         if (roomRestartState[roomId].size >= currentMemberCount) {
             io.to(roomId).emit('game_start');
             roomRestartState[roomId].clear(); 
         }
     });
+
+    // ▼▼▼ 追加: ランキング機能用イベント ▼▼▼
+
+    // スコア送信（ソロモード終了時）
+    socket.on('submit_score', async (score) => {
+        const name = playerNames[socket.id] || 'Guest';
+        // データベースに保存
+        const { error } = await supabase
+            .from('scores')
+            .insert([{ name: name, score: score }]);
+        
+        if (error) console.error('Score save error:', error);
+    });
+
+    // ランキング取得リクエスト
+    socket.on('request_ranking', async () => {
+        // スコアの高い順にトップ10を取得
+        const { data, error } = await supabase
+            .from('scores')
+            .select('name, score, created_at')
+            .order('score', { ascending: false })
+            .limit(10);
+        
+        if (!error) {
+            socket.emit('ranking_data', data);
+        } else {
+            console.error('Ranking fetch error:', error);
+        }
+    });
 });
 
-const PORT = process.env.PORT || 3000; // Renderが指定するポート、なければ3000を使う
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`サーバー起動: ポート ${PORT}`);
 });

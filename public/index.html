@@ -12,6 +12,7 @@
         <div class="logo" onclick="backToTop()">Tetris Online</div>
         
         <div class="header-btns">
+            <button onclick="toggleRanking()" class="nav-btn rank-btn">🏆 ランキング</button>
             <button onclick="toggleRules()" class="nav-btn help-btn">？ ルール</button>
             <button onclick="backToTop()" class="nav-btn">トップ</button>
         </div>
@@ -167,20 +168,23 @@
             </div>
         </div>
     </div>
+
+    <div id="ranking-modal" class="modal" onclick="toggleRanking()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="toggleRanking()">&times;</span>
+            <h2>🏆 TOP 10 RANKING</h2>
+            
+            <div id="ranking-list" class="ranking-list">
+                <p style="text-align:center;">読み込み中...</p>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button onclick="toggleRanking()" class="primary-btn" style="width: 100%;">閉じる</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
-    <script>
-        function backToTop() {
-            window.location.reload();
-        }
-        function toggleRules() {
-            const modal = document.getElementById('rules-modal');
-            if (modal.style.display === 'flex') {
-                modal.style.display = 'none';
-            } else {
-                modal.style.display = 'flex';
-            }
-        }
-    </script>
 </body>
 </html>

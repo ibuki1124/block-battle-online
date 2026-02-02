@@ -352,3 +352,38 @@ body.solo-mode #score-box { display: block; }
 .rule-section h3 { color: var(--secondary); margin-bottom: 10px; font-size: 1.1rem; }
 .rule-section ul { list-style: none; padding-left: 10px; color: #ddd; font-size: 0.95rem; line-height: 1.6; }
 .rule-section li { margin-bottom: 5px; }
+
+/* ランキングボタン */
+.nav-btn.rank-btn {
+    border-color: #ffcc00;
+    color: #ffcc00;
+}
+.nav-btn.rank-btn:hover {
+    background: rgba(255, 204, 0, 0.2);
+}
+
+/* ランキングリストのデザイン */
+.ranking-list {
+    margin-top: 15px;
+}
+.rank-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #333;
+    font-size: 1.1rem;
+}
+.rank-item:nth-child(1) { color: #ffd700; font-weight: bold; font-size: 1.3rem; } /* 金 */
+.rank-item:nth-child(2) { color: #c0c0c0; font-weight: bold; } /* 銀 */
+.rank-item:nth-child(3) { color: #cd7f32; font-weight: bold; } /* 銅 */
+
+.rank-name {
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
+}
+.rank-score {
+    font-family: monospace;
+}

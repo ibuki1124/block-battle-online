@@ -110,6 +110,38 @@ socket.on('receive_attack', (lines) => {
   }
 });
 
+// ▼▼▼ 追加: ランキングデータの受信処理 ▼▼▼
+socket.on('ranking_data', (data) => {
+  const list = document.getElementById('ranking-list');
+  list.innerHTML = ''; // クリア
+
+  if (!data || data.length === 0) {
+      list.innerHTML = '<p style="text-align:center;">データがありません</p>';
+      return;
+  }
+
+  data.forEach((item, index) => {
+      const div = document.createElement('div');
+      div.className = 'rank-item';
+      div.innerHTML = `
+          <span class="rank-name">${index + 1}. ${escapeHtml(item.name)}</span>
+          <span class="rank-score">${item.score.toLocaleString()}</span>
+      `;
+      list.appendChild(div);
+  });
+});
+
+// XSS対策用エスケープ関数
+function escapeHtml(text) {
+  if (!text) return 'Unknown';
+  return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+}
+
 socket.on('opponent_left', () => {
   const overlay = document.getElementById('result-overlay');
   const msg = document.getElementById('retry-msg');
@@ -333,11 +365,21 @@ function lock() {
 }
 
 function handleGameOver() {
-    stopGameLoop();
-    current = null;
-    draw(); 
-    socket.emit('player_gameover', myRoomId);
-    showResult(false);
+  stopGameLoop();
+    
+  // ソロモードの場合、スコアを送信
+  // myRoomIdが "__solo_" で始まっているかで判定
+  if (myRoomId && myRoomId.startsWith('__solo_')) {
+      // 0点のときは送らないなどの制御はお好みで
+      if (score > 0) {
+          socket.emit('submit_score', score);
+      }
+  }
+
+  current = null;
+  draw(); 
+  socket.emit('player_gameover', myRoomId);
+  showResult(false);
 }
 
 function stopGameLoop() {
@@ -699,3 +741,31 @@ function setupMobileControls() {
 }
 
 setupMobileControls();
+
+// ▼▼▼ 追加: UI操作系の関数をここに集約 ▼▼▼
+
+function backToTop() {
+  window.location.reload();
+}
+
+function toggleRules() {
+  const modal = document.getElementById('rules-modal');
+  if (modal.style.display === 'flex') {
+      modal.style.display = 'none';
+  } else {
+      modal.style.display = 'flex';
+  }
+}
+
+function toggleRanking() {
+  const modal = document.getElementById('ranking-modal');
+  if (modal.style.display === 'flex') {
+      modal.style.display = 'none';
+  } else {
+      modal.style.display = 'flex';
+      // 開くたびに最新データをサーバーにリクエスト
+      if (socket) {
+          socket.emit('request_ranking');
+      }
+  }
+}
