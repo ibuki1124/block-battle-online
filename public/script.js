@@ -774,8 +774,36 @@ function toggleRanking() {
       modal.style.display = 'none';
   } else {
       modal.style.display = 'flex';
-      if (socket) {
-          socket.emit('request_ranking');
+      switchRankingTab('global');
+  }
+}
+
+// ▼▼▼ 追加: ランキングのタブ切り替え ▼▼▼
+function switchRankingTab(mode) {
+  const list = document.getElementById('ranking-list');
+  const tabGlobal = document.getElementById('tab-global');
+  const tabMy = document.getElementById('tab-my');
+
+  // タブの見た目切り替え
+  if (mode === 'global') {
+      tabGlobal.classList.add('active');
+      tabMy.classList.remove('active');
+  } else {
+      tabGlobal.classList.remove('active');
+      tabMy.classList.add('active');
+  }
+
+  list.innerHTML = '<p style="text-align:center;">読み込み中...</p>';
+
+  if (mode === 'global') {
+      // 全体ランキングをリクエスト
+      socket.emit('request_ranking');
+  } else {
+      // 自分のランキングをリクエスト
+      if (currentUser) {
+          socket.emit('request_my_ranking', currentUser.id);
+      } else {
+          list.innerHTML = '<p style="text-align:center; color:#888;">ログインすると<br>自分の記録が見られます</p>';
       }
   }
 }

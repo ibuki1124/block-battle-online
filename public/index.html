@@ -203,10 +203,17 @@
     <div id="ranking-modal" class="modal" onclick="toggleRanking()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="toggleRanking()">&times;</span>
-            <h2>🏆 TOP 10 RANKING</h2>
+            <h2>🏆 ランキング</h2>
+            
+            <div class="ranking-tabs">
+                <button id="tab-global" class="tab-btn active" onclick="switchRankingTab('global')">🌎 全体TOP10</button>
+                <button id="tab-my" class="tab-btn" onclick="switchRankingTab('my')">👤 自己ベスト</button>
+            </div>
+
             <div id="ranking-list" class="ranking-list">
                 <p style="text-align:center;">読み込み中...</p>
             </div>
+            
             <div style="margin-top: 20px;">
                 <button onclick="toggleRanking()" class="primary-btn" style="width: 100%;">閉じる</button>
             </div>

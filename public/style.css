@@ -389,3 +389,35 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
 .nav-btn.auth-btn:hover {
     background: rgba(255, 255, 255, 0.1);
 }
+
+/* ▼▼▼ ランキングタブのデザイン ▼▼▼ */
+.ranking-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: #ccc;
+}
+
+/* 選択中のタブ */
+.tab-btn.active {
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+    font-weight: bold;
+}

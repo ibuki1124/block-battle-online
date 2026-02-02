@@ -145,6 +145,26 @@ io.on('connection', (socket) => {
             console.error('Ranking fetch error:', error);
         }
     });
+
+    // 個人ランキング取得リクエスト
+    socket.on('request_my_ranking', async (userId) => {
+        if (!userId) return;
+
+        // user_id が一致するスコアを高い順に10件取得
+        const { data, error } = await supabase
+            .from('scores')
+            .select('name, score, created_at')
+            .eq('user_id', userId) // ここで絞り込み
+            .order('score', { ascending: false })
+            .limit(10);
+        
+        if (!error) {
+            // クライアント側は同じ 'ranking_data' イベントで受け取るのでそのまま返す
+            socket.emit('ranking_data', data);
+        } else {
+            console.error('My ranking fetch error:', error);
+        }
+    });
 });
 
 const PORT = process.env.PORT || 3000;
