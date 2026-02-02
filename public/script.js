@@ -381,7 +381,12 @@ function handleGameOver() {
   if (myRoomId && myRoomId.startsWith('__solo_')) {
       // 0点のときは送らないなどの制御はお好みで
       if (score > 0) {
-          socket.emit('submit_score', score);
+        // currentUser はログインしていればデータが入り、していなければ null です
+        const userId = currentUser ? currentUser.id : null;
+        socket.emit('submit_score', {
+            score: score,
+            userId: userId
+        });
       }
   }
 

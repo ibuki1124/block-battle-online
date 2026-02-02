@@ -108,12 +108,24 @@ io.on('connection', (socket) => {
     // ▼▼▼ 追加: ランキング機能用イベント ▼▼▼
 
     // スコア送信（ソロモード終了時）
-    socket.on('submit_score', async (score) => {
+    socket.on('submit_score', async (data) => {
         const name = playerNames[socket.id] || 'Guest';
-        // データベースに保存
+        
+        // データからスコアとIDを取り出す
+        // (script.jsから { score: 100, userId: "..." } という形できた場合)
+        const score = data.score;
+        const userId = data.userId; // ゲストなら null になる
+
+        // データベースに保存（user_id も追加）
         const { error } = await supabase
             .from('scores')
-            .insert([{ name: name, score: score }]);
+            .insert([
+                { 
+                    name: name, 
+                    score: score,
+                    user_id: userId // ここでIDを保存！
+                }
+            ]);
         
         if (error) console.error('Score save error:', error);
     });
