@@ -3,19 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>1v1 Tetris Online</title>
+    <title>Tetris Online</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     
     <header id="main-header">
-        <div class="logo">Tetris Online</div>
-        <button onclick="backToTop()" class="nav-btn">TOP</button>
+        <div class="logo" onclick="backToTop()">Tetris Online</div>
+        
+        <div class="header-btns">
+            <button onclick="toggleRules()" class="nav-btn help-btn">？ ルール</button>
+            <button onclick="backToTop()" class="nav-btn">トップ</button>
+        </div>
     </header>
 
     <div id="join-screen">
-        <h1>1v1 Tetris Online</h1>
-        <p class="subtitle">リアルタイム対戦テトリス</p>
+        <h1>Tetris Online</h1>
+        <p class="subtitle">対戦型テトリス</p>
         
         <div class="input-group">
             <p>プレイヤー名</p>
@@ -26,7 +30,7 @@
 
         <div class="action-buttons">
             <button onclick="joinRoom()" class="primary-btn">入室 / 作成</button>
-            <button onclick="startPractice()" class="secondary-btn">1人で練習</button>
+            <button onclick="startPractice()" class="secondary-btn">1人でプレイ</button>
         </div>
         <p id="error-msg"></p>
     </div>
@@ -89,6 +93,7 @@
             </div>
 
         </div>
+        
         <div id="mobile-controls">
             <div class="control-row">
                 <button id="btn-hold" class="control-btn util-btn">HOLD</button>
@@ -103,15 +108,84 @@
         </div>
 
         <div class="controls-guide">
-            [←/A][→/D]: Move | [↑/W]: Rotate | [↓/S]: Soft Drop | [Space]: Hard Drop | [Shift]: Hold
+            <div class="guide-item">
+                <span class="action-name">移動：</span>
+                <span class="key-badge">←</span> <span class="sub-key">(A)</span>
+                <span class="separator">/</span>
+                <span class="key-badge">→</span> <span class="sub-key">(D)</span>
+            </div>
+            <div class="guide-item">
+                <span class="action-name">回転：</span>
+                <span class="key-badge">↑</span> <span class="sub-key">(W)</span>
+            </div>
+            <div class="guide-item">
+                <span class="action-name">ソフトドロップ：</span>
+                <span class="key-badge">↓</span> <span class="sub-key">(S)</span>
+            </div>
+            <div class="guide-item">
+                <span class="action-name">ハードドロップ：</span>
+                <span class="key-badge wide">Space</span>
+            </div>
+            <div class="guide-item">
+                <span class="action-name">ホールド：</span>
+                <span class="key-badge wide">Shift</span>
+            </div>
         </div>
     </div>
 
+    <div id="rules-modal" class="modal" onclick="toggleRules()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="toggleRules()">&times;</span>
+            <h2>ルール・操作方法</h2>
+            
+            <div class="rule-section">
+                <h3>💻 操作方法 (PC)</h3>
+                <ul>
+                    <li><strong>移動:</strong> ← / → (または A / D)</li>
+                    <li><strong>回転:</strong> ↑ (または W)</li>
+                    <li><strong>ソフトドロップ:</strong> ↓ (または S)</li>
+                    <li><strong>ハードドロップ:</strong> Space</li>
+                    <li><strong>ホールド:</strong> Shift</li>
+                </ul>
+            </div>
+
+            <div class="rule-section">
+                <h3>📱 操作方法 (スマホ)</h3>
+                <ul>
+                    <li>画面下のボタンをタップまたは長押し</li>
+                </ul>
+            </div>
+
+            <div class="rule-section">
+                <h3>⚔️ 対戦モードルール</h3>
+                <ul>
+                    <li>2列以上同時に消すと、相手にお邪魔ブロックを送れます。</li>
+                    <li><strong>2列:</strong> 1段攻撃</li>
+                    <li><strong>3列:</strong> 2段攻撃</li>
+                    <li><strong>4列:</strong> 4段攻撃</li>
+                    <li>一番上まで積み上がったら負けです。</li>
+                </ul>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button onclick="toggleRules()" class="primary-btn" style="width: 100%;">閉じる</button>
+            </div>
+        </div>
+    </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
     <script>
         function backToTop() {
             window.location.reload();
+        }
+        // モーダルの開閉関数
+        function toggleRules() {
+            const modal = document.getElementById('rules-modal');
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            } else {
+                modal.style.display = 'flex';
+            }
         }
     </script>
 </body>
