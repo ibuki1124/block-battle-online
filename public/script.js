@@ -44,6 +44,20 @@ socket.on('opponent_won', () => {
     showResult(true); // "WIN"を表示
 });
 
+// ▼▼▼ 新規：相手がいなくて待機に戻される処理 ▼▼▼
+socket.on('reset_waiting', () => {
+  // リザルト画面を消す
+  document.getElementById('result-overlay').style.display = 'none';
+  
+  // 待機メッセージに戻す
+  document.getElementById('status').innerText = "対戦相手を待っています...";
+  document.getElementById('status').style.color = "#ccc";
+  
+  // 相手の画面表示をクリアしておく
+  opponentCtx.clearRect(0, 0, opponentCanvas.width, opponentCanvas.height);
+});
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
 // ▼▼▼ 新規：攻撃を受け取った時の処理 ▼▼▼
 socket.on('receive_attack', (lines) => {
   // ★修正点: ゲーム中（requestIdがある時）以外は攻撃を無視する

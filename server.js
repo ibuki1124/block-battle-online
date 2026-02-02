@@ -8,7 +8,6 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// 部屋ごとのリトライ希望者を管理するセット
 const roomRestartState = {}; 
 
 io.on('connection', (socket) => {
@@ -34,22 +33,17 @@ io.on('connection', (socket) => {
         socket.broadcast.to(data.roomId).emit('opponent_board', data);
     });
 
-    // ▼▼▼ 新規：攻撃（お邪魔ライン）の転送 ▼▼▼
+    // 攻撃（お邪魔ライン）の転送
     socket.on('attack', (data) => {
-        // data = { roomId: '...', lines: 2 } (2ライン送れ！という命令)
-        // 相手に「receive_attack」として転送
         socket.broadcast.to(data.roomId).emit('receive_attack', data.lines);
     });
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-    // ▼▼▼ 新規：ゲームオーバー通知（敗北宣言） ▼▼▼
+    // ゲームオーバー通知
     socket.on('player_gameover', (roomId) => {
-        // 送ってきた本人は「負け」、部屋の他の人は「勝ち」
-        // "opponent_won" を部屋の他の人に送る
         socket.broadcast.to(roomId).emit('opponent_won');
     });
 
-    // ▼▼▼ 新規：リトライ要求 ▼▼▼
+    // ▼▼▼ 修正：リトライ要求 ▼▼▼
     socket.on('restart_request', (roomId) => {
         if (!roomRestartState[roomId]) {
             roomRestartState[roomId] = new Set();
@@ -58,11 +52,18 @@ io.on('connection', (socket) => {
         // リクエストした人を記録
         roomRestartState[roomId].add(socket.id);
 
-        // 部屋の人数（通常2人）全員がリトライを希望したら再開
         const room = io.sockets.adapter.rooms.get(roomId);
         const currentMemberCount = room ? room.size : 0;
 
-        // 全員準備OKなら
+        // ★修正点: 人数が2人未満（相手がいない）場合
+        if (currentMemberCount < 2) {
+            // ゲームを開始せず、このプレイヤーに「待機状態に戻れ」と命令する
+            socket.emit('reset_waiting');
+            roomRestartState[roomId].clear(); // リクエスト状態をクリア
+            return;
+        }
+
+        // 全員（2人）準備OKなら
         if (roomRestartState[roomId].size >= currentMemberCount) {
             io.to(roomId).emit('game_start'); // 再度ゲーム開始合図
             roomRestartState[roomId].clear(); // 状態リセット
