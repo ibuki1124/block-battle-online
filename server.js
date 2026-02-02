@@ -9,31 +9,28 @@ const io = new Server(server);
 app.use(express.static('public'));
 
 const roomRestartState = {};
-// ★追加: プレイヤー名を保存するオブジェクト
 const playerNames = {}; 
 
 io.on('connection', (socket) => {
     
-    // ▼▼▼ 修正: 名前(playerName)を受け取る ▼▼▼
+    // 入室
     socket.on('join_game', (roomId, playerName) => {
         const room = io.sockets.adapter.rooms.get(roomId);
         const userCount = room ? room.size : 0;
 
         if (userCount < 2) {
             socket.join(roomId);
-            
-            // ★追加: 名前を保存（空ならGuest）
             playerNames[socket.id] = playerName || 'Guest';
 
             socket.emit('join_success', roomId, 'multi');
             
-            // ★追加: 部屋にいる全員の名前リストを作成して送信
+            // 名前リスト更新
             const updatedRoom = io.sockets.adapter.rooms.get(roomId);
             const players = [];
             for (const id of updatedRoom) {
                 players.push({ id: id, name: playerNames[id] });
             }
-            io.to(roomId).emit('update_names', players); // 全員に通知
+            io.to(roomId).emit('update_names', players);
 
             if (userCount + 1 === 2) {
                 io.to(roomId).emit('game_start');
@@ -43,31 +40,35 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ▼▼▼ 修正: 名前を受け取る ▼▼▼
+    // 練習モード
     socket.on('join_practice', (playerName) => {
         const roomId = `__solo_${socket.id}`; 
         socket.join(roomId);
-        
-        // ★追加: 名前を保存
         playerNames[socket.id] = playerName || 'Guest';
-        
         socket.emit('join_success', roomId, 'solo');
-        
-        // ★追加: 自分の名前を反映させるため送信
         socket.emit('update_names', [{ id: socket.id, name: playerNames[socket.id] }]);
-        
         socket.emit('game_start');
     });
 
-    // 切断時の処理
-    socket.on('disconnect', () => {
-        // ★追加: 名前データを削除
+    // ★修正: 切断処理（disconnectingを使う）
+    socket.on('disconnecting', () => {
+        // 名前削除
         if (playerNames[socket.id]) {
             delete playerNames[socket.id];
         }
+        
+        // 自分がいた部屋に残っている人（対戦相手）に通知
+        for (const roomId of socket.rooms) {
+            if (roomId !== socket.id) {
+                socket.to(roomId).emit('opponent_left');
+            }
+        }
     });
 
-    // その他の処理は変更なし
+    socket.on('disconnect', () => {
+        // ここは空でもOK（disconnectingで処理済み）
+    });
+
     socket.on('update_board', (data) => {
         socket.broadcast.to(data.roomId).emit('opponent_board', data);
     });

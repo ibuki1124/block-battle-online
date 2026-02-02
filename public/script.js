@@ -1,6 +1,33 @@
 const socket = io();
 let myRoomId = null;
-let requestId = null; 
+
+// ▼▼▼ Web Worker（バックグラウンドでも止まらないタイマー） ▼▼▼
+const workerBlob = new Blob([`
+    let intervalId;
+    self.onmessage = function(e) {
+        if (e.data === 'start') {
+            if (intervalId) clearInterval(intervalId);
+            // 1秒間に約60回 (16.66ms) の信号を送る
+            intervalId = setInterval(() => {
+                self.postMessage('tick');
+            }, 1000 / 60);
+        } else if (e.data === 'stop') {
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+    };
+`], { type: 'application/javascript' });
+
+const gameTimerWorker = new Worker(URL.createObjectURL(workerBlob));
+
+// Workerからの信号を受け取ってゲームを進める
+gameTimerWorker.onmessage = function(e) {
+    if (e.data === 'tick') {
+        update(Date.now());
+    }
+};
+// ▲▲▲ Web Worker 設定終了 ▲▲▲
+
 
 // --- 通信部分 ---
 function joinRoom() {
@@ -34,12 +61,12 @@ socket.on('join_success', (roomId, mode) => {
     document.getElementById('current-room').innerText = roomId;
     
     if (mode === 'solo') {
-        document.body.classList.add('solo-mode'); // クラス追加
+        document.body.classList.add('solo-mode');
         document.getElementById('vs-area').style.display = 'none';
         document.getElementById('header-info').style.display = 'none';
         myRoomId = roomId;
     } else {
-        document.body.classList.remove('solo-mode'); // クラス削除
+        document.body.classList.remove('solo-mode');
         document.getElementById('vs-area').style.display = 'flex';
         document.getElementById('local-player-label').style.display = 'block';
         document.getElementById('header-info').style.display = 'block';
@@ -78,9 +105,27 @@ socket.on('reset_waiting', () => {
 });
 
 socket.on('receive_attack', (lines) => {
-  if (requestId) {
+  if (isPlaying) { 
     addGarbage(lines);
   }
+});
+
+socket.on('opponent_left', () => {
+  if (document.getElementById('result-overlay').style.display !== 'none') return;
+
+  stopGameLoop();
+  
+  const title = document.getElementById('result-title');
+  title.innerText = "YOU WIN!";
+  title.style.color = "#4ecca3";
+  
+  const msg = document.getElementById('retry-msg');
+  msg.innerText = "相手が切断しました";
+  msg.style.display = "block";
+  msg.style.color = "#ff4444";
+
+  document.getElementById('result-overlay').style.display = 'flex';
+  document.getElementById('retry-btn').style.display = 'none';
 });
 
 function requestRetry() {
@@ -96,7 +141,7 @@ function requestRetry() {
 
 // --- カウントダウン機能 ---
 function startCountdown() {
-    let count = 5; 
+    let count = 3; 
     
     const drawCount = (text) => {
         ctx.fillStyle = '#000'; 
@@ -171,15 +216,22 @@ let lastTime, dropCounter;
 let bag, nextQueue, holdType, canHold, current;
 let levelTimer = null; 
 let levelUpFrames = 0; 
+let isPlaying = false; // ゲーム中フラグ
 
 function initGame() {
+    // ★修正: stopGameLoopを最初に呼んでリセットする
+    stopGameLoop(); 
+
     board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     score = 0; lines = 0; level = 1; combo = -1;
     bag = []; nextQueue = []; holdType = null; canHold = true;
     
-    lastTime = 0;
+    lastTime = 0; 
     dropCounter = 0;
     levelUpFrames = 0; 
+    
+    // ★修正: stopGameLoopの後に true にする
+    isPlaying = true; 
     
     if (document.getElementById('vs-area').style.display !== 'none') {
         document.getElementById('status').innerText = "BATTLE!";
@@ -188,7 +240,6 @@ function initGame() {
 
     spawn();
     updateUI();
-    if(requestId) cancelAnimationFrame(requestId);
     
     if(levelTimer) clearInterval(levelTimer);
     
@@ -199,7 +250,9 @@ function initGame() {
             levelUpFrames = 120;
         }
     }, 30000); 
-    update();
+    
+    // Workerを使ってゲームループを開始
+    gameTimerWorker.postMessage('start');
 }
 
 const createPiece = (type) => ({ type, shape: SHAPES[type], x: Math.floor(COLS/2) - Math.floor(SHAPES[type][0].length/2), y: type === 'I' ? -1 : 0 });
@@ -263,6 +316,9 @@ function lock() {
   
     clearLines();
     spawn();
+    
+    // 次のミノに即座に移るため、カウンターはリセット
+    dropCounter = 0;
 }
 
 function handleGameOver() {
@@ -274,12 +330,13 @@ function handleGameOver() {
 }
 
 function stopGameLoop() {
-    if(requestId) cancelAnimationFrame(requestId);
-    requestId = null;
+    gameTimerWorker.postMessage('stop'); // Workerを停止
+    
+    isPlaying = false; // フラグをOFF
     if(levelTimer) {
       clearInterval(levelTimer);
       levelTimer = null;
-  }
+    }
 }
 
 function showResult(isWin) {
@@ -291,7 +348,6 @@ function showResult(isWin) {
         title.innerText = "YOU WIN!";
         title.style.color = "#4ecca3";
     } else {
-        // ★修正: GAME OVER -> YOU LOSE...
         title.innerText = "YOU LOSE...";
         title.style.color = "#ff4444";
     }
@@ -382,7 +438,7 @@ function updateUI() {
 
 document.addEventListener('keydown', e => {
   if (document.getElementById('join-screen').style.display !== 'none') return;
-  if (!requestId) return; 
+  if (!isPlaying) return; 
   if (!current) return; 
 
   const key = e.key.toLowerCase();
@@ -415,24 +471,58 @@ document.addEventListener('keydown', e => {
       canHold = false;
     }
   }
+  
+  // キー操作時も画面更新
+  draw();
 });
 
+// ★修正: Workerから定期的に呼ばれる update 関数
+// ブラウザが裏でもWorkerは止まらないため、dropCounterに時間が溜まり、
+// ここで一気に消化されることで「ポーズ」にならずゲームが進行する。
 function update(time = 0) {
-  if (!paused) {
+  if (!paused && isPlaying) {
     if (!lastTime) {
         lastTime = time;
     }
 
-    const dt = time - lastTime; lastTime = time; dropCounter += dt;
+    const dt = time - lastTime;
+    lastTime = time;
+    dropCounter += dt;
+
     const speed = Math.max(50, 1000 * Math.pow(0.85, level - 1));
-    if (dropCounter > speed) {
-      if (current && !collide(current.shape, current.x, current.y + 1)) current.y++;
-      else if (current) lock();
-      dropCounter = 0;
+
+    // ★重要: whileループで溜まった時間分だけ進める
+    // ブラウザが裏に行くと、メインスレッドのこの関数は呼ばれる頻度が下がるが、
+    // Workerは正確に動いているため `dt` が大きくなる（例えば1000msなど）。
+    // このループでその分を一気に処理することで、時間経過通りにミノを落下させる。
+    
+    // フリーズ防止の回数制限
+    let maxLoops = 20; 
+
+    while (dropCounter > speed && maxLoops > 0) {
+        if (!current || !isPlaying) break;
+
+        if (!collide(current.shape, current.x, current.y + 1)) {
+            // 落下成功
+            current.y++;
+            dropCounter -= speed;
+        } else {
+            // 固定処理
+            lock();
+            
+            // 固定後は次のミノが即落ちないようにリセットし、一旦処理を抜ける
+            // (次のミノは次フレーム以降で処理)
+            dropCounter = 0;
+            break; 
+        }
+        maxLoops--;
     }
+    
+    // 制限を超えた分はリセット
+    if (maxLoops === 0) dropCounter = 0;
   }
+  
   draw();
-  requestId = requestAnimationFrame(update);
 }
 
 function addGarbage(linesCount) {
@@ -515,7 +605,7 @@ function setupMobileControls() {
 
   const startAction = (actionName, e) => {
       e.preventDefault(); 
-      if (!requestId) return; 
+      if (!isPlaying) return; 
 
       actions[actionName]();
 
