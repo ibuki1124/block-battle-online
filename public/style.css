@@ -65,7 +65,7 @@ body {
     color: var(--text-main);
     padding: 0 10px;
     padding-bottom: 4px;
-    display: none; 
+    display: none; /* PCでは非表示 */
     align-items: center; 
     height: 100%;
     line-height: 1;
@@ -96,6 +96,7 @@ body {
     text-align: left;
     font-size: 1rem;
     cursor: pointer;
+    /* width: 100%; ←修正: 削除（はみ出し防止） */
 }
 .menu-item:hover { background: rgba(255,255,255,0.1); }
 .menu-item.danger { color: #ff8888; } 
@@ -127,6 +128,35 @@ button:active { transform: scale(0.98); }
 .secondary-btn { background: var(--secondary); color: #000; }
 .secondary-btn:hover { opacity: 0.9; }
 #error-msg { color: #ff4444; margin-top: 15px; height: 20px;}
+
+/* ▼▼▼ 追加: 名前入力欄のスタイル調整 ▼▼▼ */
+.name-input-wrapper {
+    position: relative; /* ボタンを絶対配置するための基準 */
+    width: 100%;
+}
+
+/* 変更ボタン（初期は非表示） */
+.save-name-btn {
+    display: none; /* JSで表示切り替え */
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+    
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: auto !important; /* buttonの幅100%設定を打ち消し */
+}
+
+.save-name-btn:hover {
+    background: var(--accent-hover);
+}
 
 /* ▼▼▼ ゲーム画面全体 ▼▼▼ */
 #game-wrapper { 
@@ -292,7 +322,7 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
     #main-header { padding: 0 15px; }
     .pc-only { display: none; } /* PC用ボタン非表示 */
     .mobile-menu-btn {
-        display: flex;
+        display: flex; /* スマホでは表示 */
     }
 
     /* ゲームエリア調整 */

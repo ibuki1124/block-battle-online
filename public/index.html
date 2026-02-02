@@ -62,9 +62,13 @@
         
         <div class="input-group">
             <p>プレイヤー名</p>
-            <input type="text" id="name-input" placeholder="名前 (例: Player1)">
+            
+            <div class="name-input-wrapper">
+                <input type="text" id="name-input" placeholder="例: Player1 (最大10文字)" maxlength="10">
+                <button id="btn-save-name" onclick="saveNameFromInput()" class="save-name-btn">変更</button>
+            </div>
             <p style="margin-top:15px;">部屋ID</p>
-            <input type="text" id="room-input" placeholder="例: room1">
+            <input type="text" id="room-input" placeholder="例: room1" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');">
         </div>
 
         <div class="action-buttons">
@@ -72,6 +76,7 @@
             <button onclick="startPractice()" class="secondary-btn">1人でプレイ</button>
         </div>
         <p id="error-msg"></p>
+        <p id="save-msg" style="height:20px; font-size:0.9rem; margin-top:5px;"></p> 
     </div>
 
     <div id="game-wrapper" style="display: none;">
@@ -204,6 +209,10 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="toggleRanking()">&times;</span>
             <h2>🏆 ランキング</h2>
+            <div id="guest-ranking-alert" style="display:none; background:rgba(78, 204, 163, 0.1); border:1px solid var(--accent); color:var(--accent); padding:10px; border-radius:5px; margin-bottom:15px; font-size:0.9rem; text-align:center;">
+                ログインするとスコアを登録できます！<br>
+                <a href="#" onclick="toggleRanking(); toggleLogin();" style="color:#fff; font-weight:bold; text-decoration:underline;">ログイン / 登録はこちら</a>
+            </div>
             
             <div class="ranking-tabs">
                 <button id="tab-global" class="tab-btn active" onclick="switchRankingTab('global')">🌎 全体TOP10</button>

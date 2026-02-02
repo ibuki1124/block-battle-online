@@ -5,6 +5,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null; // ログイン中のユーザー情報
+let originalName = ""; // ▼追加: 変更前の名前を保持
 // ▲▲▲ ここまで ▲▲▼
 
 const socket = io();
@@ -380,12 +381,10 @@ function handleGameOver() {
   // myRoomIdが "__solo_" で始まっているかで判定
   if (myRoomId && myRoomId.startsWith('__solo_')) {
       // 0点のときは送らないなどの制御はお好みで
-      if (score > 0) {
-        // currentUser はログインしていればデータが入り、していなければ null です
-        const userId = currentUser ? currentUser.id : null;
+      if (score > 0 && currentUser) { 
         socket.emit('submit_score', {
             score: score,
-            userId: userId
+            userId: currentUser.id
         });
       }
   }
@@ -770,10 +769,16 @@ function toggleRules() {
 
 function toggleRanking() {
   const modal = document.getElementById('ranking-modal');
+  const guestAlert = document.getElementById('guest-ranking-alert');
   if (modal.style.display === 'flex') {
       modal.style.display = 'none';
   } else {
       modal.style.display = 'flex';
+    if (!currentUser) {
+        if(guestAlert) guestAlert.style.display = 'block';
+    } else {
+        if(guestAlert) guestAlert.style.display = 'none';
+    }
       switchRankingTab('global');
   }
 }
@@ -821,6 +826,76 @@ document.addEventListener('click', (e) => {
       menu.classList.remove('active');
   }
 });
+
+// ▼▼▼ 追加: トップページからの名前変更処理 ▼▼▼
+
+// 名前入力欄の監視
+const nameInputEl = document.getElementById('name-input');
+const saveNameBtn = document.getElementById('btn-save-name');
+
+if (nameInputEl) {
+    // 文字が入力されるたびにチェック
+    nameInputEl.addEventListener('input', (e) => {
+        // ログインしていない、または名前が変わっていない場合はボタンを隠す
+        if (!currentUser || e.target.value.trim() === originalName) {
+            saveNameBtn.style.display = 'none';
+        } else {
+            saveNameBtn.style.display = 'block';
+        }
+    });
+
+    // Enterキーで保存
+    nameInputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && saveNameBtn.style.display === 'block') {
+            saveNameFromInput();
+        }
+    });
+}
+
+// 保存実行
+async function saveNameFromInput() {
+  const newName = nameInputEl.value.trim();
+  const msgEl = document.getElementById('save-msg');
+
+  if (!newName) return;
+
+  try {
+      // 1. ログイン情報の名前を更新
+      const { data, error } = await supabaseClient.auth.updateUser({
+          data: { display_name: newName }
+      });
+
+      if (error) throw error;
+
+      // ▼▼▼ 追加: データベースにある過去のスコアの名前も一括更新 ▼▼▼
+      if (currentUser) {
+          const { error: dbError } = await supabaseClient
+              .from('scores')
+              .update({ name: newName })   // 名前を新しいものに
+              .eq('user_id', currentUser.id); // 自分のIDのデータだけ
+          
+          if (dbError) throw dbError;
+      }
+      // ▲▲▲ 追加ここまで ▲▲▼
+
+      // 成功時の処理
+      originalName = newName; 
+      saveNameBtn.style.display = 'none'; 
+      
+      if(msgEl) {
+          msgEl.innerText = "名前を変更しました！"; // メッセージ微調整
+          msgEl.style.color = "#4ecca3";
+          setTimeout(() => { msgEl.innerText = ""; }, 3000);
+      }
+
+  } catch (error) {
+      console.error(error);
+      if(msgEl) {
+          msgEl.innerText = "エラー: " + error.message;
+          msgEl.style.color = "#ff4444";
+      }
+  }
+}
 
 // ▼▼▼ 認証ロジック ▼▼▼
 let isLoginMode = true; 
@@ -910,83 +985,82 @@ async function logout() {
 }
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
-  // --- PC用要素 ---
-  const pcLoginBtn = document.getElementById('btn-login');
-  const pcUserInfo = document.getElementById('user-info');
-  const pcNameDisplay = document.getElementById('user-name-display');
-  
-  // --- スマホ用要素 ---
-  const mobileMenu = document.getElementById('mobile-menu-list');
-  const mobileLoginBtn = document.getElementById('btn-login-mobile');
-  
-  // --- 共通要素 ---
-  const nameInput = document.getElementById('name-input'); // 入室画面の名前入力欄
+    // 各要素の取得
+    const pcLoginBtn = document.getElementById('btn-login');
+    const pcUserInfo = document.getElementById('user-info');
+    const pcNameDisplay = document.getElementById('user-name-display');
+    const mobileMenu = document.getElementById('mobile-menu-list');
+    const mobileLoginBtn = document.getElementById('btn-login-mobile');
+    const nameInput = document.getElementById('name-input'); 
+    const saveNameBtn = document.getElementById('btn-save-name');
 
-  // スマホメニュー内の「ユーザー情報エリア」を探す（なければ作る）
-  let mobileUserInfo = document.getElementById('mobile-user-info');
-  if (!mobileUserInfo) {
-      mobileUserInfo = document.createElement('div');
-      mobileUserInfo.id = 'mobile-user-info';
-      mobileUserInfo.className = 'menu-item';
-      mobileUserInfo.style.borderBottom = '1px solid #333';
-      mobileUserInfo.style.cursor = 'default';
-      mobileUserInfo.style.backgroundColor = 'rgba(255,255,255,0.05)';
-      // メニューの先頭（ログインボタンの場所）に挿入する準備
-  }
+    // スマホ用ユーザー情報エリア
+    let mobileUserInfo = document.getElementById('mobile-user-info');
+    if (!mobileUserInfo) {
+        mobileUserInfo = document.createElement('div');
+        mobileUserInfo.id = 'mobile-user-info';
+        mobileUserInfo.className = 'menu-item';
+        mobileUserInfo.style.borderBottom = '1px solid #333';
+        mobileUserInfo.style.cursor = 'default';
+        mobileUserInfo.style.backgroundColor = 'rgba(255,255,255,0.05)';
+    }
 
-  if (session) {
-      // ■■■ ログイン中 ■■■
-      currentUser = session.user;
-      const displayName = currentUser.user_metadata.display_name || currentUser.email.split('@')[0];
-      
-      // 1. PCヘッダー更新
-      if(pcLoginBtn) pcLoginBtn.style.display = 'none';
-      if(pcUserInfo) {
-          pcUserInfo.style.display = 'flex';
-          pcNameDisplay.innerText = displayName;
-      }
+    if (session) {
+        // --- ログイン中 ---
+        currentUser = session.user;
+        const displayName = currentUser.user_metadata.display_name || currentUser.email.split('@')[0];
+        
+        // 元の名前を記憶
+        originalName = displayName;
 
-      // 2. スマホメニュー更新
-      if(mobileLoginBtn) mobileLoginBtn.style.display = 'none'; // ログインボタン隠す
-      
-      // ユーザー情報＆ログアウトボタンを生成してメニューの先頭に追加
-      mobileUserInfo.innerHTML = `
-        <div style="color:var(--accent); font-weight:bold; margin-bottom:5px;">👤 ${escapeHtml(displayName)}</div>
-        <button onclick="logout(); toggleMobileMenu();" style="background:#333; border:1px solid #555; color:#ccc; padding:10px; border-radius:4px; cursor:pointer; width:100%; box-sizing: border-box;">ログアウト</button>
-      `;
-      // まだ追加されていなければ追加
-      if (!document.getElementById('mobile-user-info')) {
-          mobileMenu.insertBefore(mobileUserInfo, mobileMenu.firstChild);
-      }
+        // PCヘッダー
+        if(pcLoginBtn) pcLoginBtn.style.display = 'none';
+        if(pcUserInfo) {
+            pcUserInfo.style.display = 'flex';
+            pcNameDisplay.innerText = displayName;
+        }
 
-      // 3. 入室画面の名前欄
-      if (nameInput) {
-          nameInput.value = displayName;
-          nameInput.readOnly = true; 
-          nameInput.style.backgroundColor = "#333";
-      }
-      
-  } else {
-      // ■■■ ログアウト中 ■■■
-      currentUser = null;
+        // スマホメニュー
+        if(mobileLoginBtn) mobileLoginBtn.style.display = 'none';
+        // スマホメニューからは編集ボタンを消し、ログアウトのみにする
+        mobileUserInfo.innerHTML = `
+            <div style="color:var(--accent); font-weight:bold; margin-bottom:5px;">👤 ${escapeHtml(displayName)}</div>
+            <button onclick="logout(); toggleMobileMenu();" style="background:#333; border:1px solid #555; color:#ccc; padding:10px; border-radius:4px; cursor:pointer; width:100%; box-sizing: border-box;">ログアウト</button>
+        `;
+        if (!document.getElementById('mobile-user-info')) {
+            mobileMenu.insertBefore(mobileUserInfo, mobileMenu.firstChild);
+        }
 
-      // 1. PCヘッダー更新
-      if(pcLoginBtn) pcLoginBtn.style.display = 'inline-block';
-      if(pcUserInfo) pcUserInfo.style.display = 'none';
+        // 入室画面の名前欄
+        if (nameInput) {
+            nameInput.value = displayName;
+            // readOnlyや背景色の変更は削除します（編集可能にするため）
+            nameInput.readOnly = false; 
+            nameInput.style.backgroundColor = "#000"; 
+        }
+        
+    } else {
+        // --- ログアウト中 ---
+        currentUser = null;
+        originalName = "";
 
-      // 2. スマホメニュー更新
-      if(mobileLoginBtn) mobileLoginBtn.style.display = 'block'; // ログインボタン表示
-      
-      // ユーザー情報エリアがあれば削除
-      if (document.getElementById('mobile-user-info')) {
-          mobileUserInfo.remove();
-      }
+        // PCヘッダー
+        if(pcLoginBtn) pcLoginBtn.style.display = 'inline-block';
+        if(pcUserInfo) pcUserInfo.style.display = 'none';
 
-      // 3. 入室画面の名前欄
-      if (nameInput) {
-          nameInput.value = "";
-          nameInput.readOnly = false;
-          nameInput.style.backgroundColor = "#000";
-      }
-  }
+        // スマホメニュー
+        if(mobileLoginBtn) mobileLoginBtn.style.display = 'block';
+        if (document.getElementById('mobile-user-info')) {
+            mobileUserInfo.remove();
+        }
+
+        // 入室画面
+        if (nameInput) {
+            nameInput.value = "";
+            nameInput.readOnly = false;
+            nameInput.style.backgroundColor = "#000";
+        }
+        // 保存ボタンも隠す
+        if(saveNameBtn) saveNameBtn.style.display = 'none';
+    }
 });

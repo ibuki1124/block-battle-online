@@ -116,6 +116,8 @@ io.on('connection', (socket) => {
         const score = data.score;
         const userId = data.userId; // ゲストなら null になる
 
+        if (!userId) return; // ユーザーIDがない場合は保存しない（ゲスト対策）
+
         // データベースに保存（user_id も追加）
         const { error } = await supabase
             .from('scores')
