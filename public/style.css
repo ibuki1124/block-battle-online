@@ -65,11 +65,10 @@ body {
     color: var(--text-main);
     padding: 0 10px;
     padding-bottom: 4px;
-    /* ▼▼▼ 追加: これで上下中央にガチッと合います ▼▼▼ */
-    display: flex;       /* ボタン自体を整列用の箱にする */
-    align-items: center; /* 垂直方向の中央揃え */
-    height: 100%;        /* ヘッダーの高さ(60px)に合わせる */
-    line-height: 1;      /* 文字自体の上下の余白をなくす */
+    display: none; 
+    align-items: center; 
+    height: 100%;
+    line-height: 1;
 }
 
 /* 開いたときのメニューリスト */
@@ -97,7 +96,6 @@ body {
     text-align: left;
     font-size: 1rem;
     cursor: pointer;
-    width: 100%;
 }
 .menu-item:hover { background: rgba(255,255,255,0.1); }
 .menu-item.danger { color: #ff8888; } 
@@ -293,6 +291,9 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
     /* ヘッダー調整 */
     #main-header { padding: 0 15px; }
     .pc-only { display: none; } /* PC用ボタン非表示 */
+    .mobile-menu-btn {
+        display: flex;
+    }
 
     /* ゲームエリア調整 */
     #game-wrapper {
@@ -378,4 +379,13 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
     h1 { font-size: 2rem; }
     #join-screen { margin-top: 20px; padding: 30px; }
     #result-overlay { z-index: 2000; }
+}
+
+/* ログインボタン */
+.nav-btn.auth-btn {
+    border-color: #aaa;
+    color: #fff;
+}
+.nav-btn.auth-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
 }

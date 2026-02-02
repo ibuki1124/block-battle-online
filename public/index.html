@@ -12,6 +12,15 @@
         <div class="logo" onclick="backToTop()">Tetris Online</div>
         
         <div class="header-btns pc-only">
+            <button id="btn-login" onclick="toggleLogin()" class="nav-btn auth-btn">
+                🔑 <span class="btn-text">ログイン</span>
+            </button>
+            
+            <div id="user-info" style="display:none; align-items:center; gap:10px;">
+                <span id="user-name-display" style="color:var(--accent); font-weight:bold;"></span>
+                <button onclick="logout()" class="nav-btn" style="font-size:0.8rem;">ログアウト</button>
+            </div>
+
             <button onclick="toggleRanking()" class="nav-btn rank-btn">
                 🏆 <span class="btn-text">ランキング</span>
             </button>
@@ -28,6 +37,10 @@
         </div>
 
         <div id="mobile-menu-list" class="mobile-menu-list">
+            <button id="btn-login-mobile" onclick="toggleLogin(); toggleMobileMenu()" class="menu-item">
+                🔑 ログイン / 登録
+            </button>
+            
             <button onclick="toggleRanking(); toggleMobileMenu()" class="menu-item">
                 🏆 ランキングを見る
             </button>
@@ -82,9 +95,7 @@
             <div id="my-game-area" class="player-area">
                 <div id="local-player-label" class="player-label">YOU</div>
                 <div class="game-container local">
-                    
                     <canvas id="game" width="300" height="600"></canvas>
-                    
                     <div class="side-panel">
                         <div class="stat-box">
                             <div class="stat-label">Next</div>
@@ -94,7 +105,6 @@
                             <div class="stat-label">Hold</div>
                             <canvas id="hold" width="100" height="100" class="preview-canvas"></canvas>
                         </div>
-                        
                         <div id="score-box" class="stat-box" style="margin-top: 10px;">
                             <div class="stat-label">Score</div>
                             <div id="score" class="stat-value">0</div>
@@ -158,7 +168,6 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="toggleRules()">&times;</span>
             <h2>ルール・操作方法</h2>
-            
             <div class="rule-section">
                 <h3>💻 操作方法 (PC)</h3>
                 <ul>
@@ -169,14 +178,12 @@
                     <li><strong>ホールド:</strong> Shift</li>
                 </ul>
             </div>
-
             <div class="rule-section">
                 <h3>📱 操作方法 (スマホ)</h3>
                 <ul>
                     <li>画面下のボタンをタップまたは長押し</li>
                 </ul>
             </div>
-
             <div class="rule-section">
                 <h3>⚔️ 対戦モードルール</h3>
                 <ul>
@@ -187,7 +194,6 @@
                     <li>一番上まで積み上がったら負けです。</li>
                 </ul>
             </div>
-            
             <div style="margin-top: 20px;">
                 <button onclick="toggleRules()" class="primary-btn" style="width: 100%;">閉じる</button>
             </div>
@@ -198,18 +204,42 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="toggleRanking()">&times;</span>
             <h2>🏆 TOP 10 RANKING</h2>
-            
             <div id="ranking-list" class="ranking-list">
                 <p style="text-align:center;">読み込み中...</p>
             </div>
-            
             <div style="margin-top: 20px;">
                 <button onclick="toggleRanking()" class="primary-btn" style="width: 100%;">閉じる</button>
             </div>
         </div>
     </div>
 
+    <div id="login-modal" class="modal" onclick="toggleLogin()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="toggleLogin()">&times;</span>
+            <h2 id="auth-title">ログイン</h2>
+            
+            <div class="input-group">
+                <p>メールアドレス</p>
+                <input type="email" id="email-input" placeholder="mail@example.com">
+                <p style="margin-top:10px;">パスワード</p>
+                <input type="password" id="password-input" placeholder="6文字以上">
+            </div>
+
+            <div class="action-buttons">
+                <button onclick="handleAuth()" class="primary-btn" id="auth-submit-btn">ログインする</button>
+            </div>
+
+            <p id="auth-error-msg" style="color:#ff4444; margin-top:10px; min-height:20px;"></p>
+
+            <div style="margin-top: 20px; text-align: center; font-size: 0.9rem;">
+                <span id="auth-switch-text">アカウントをお持ちでないですか？</span>
+                <a href="#" onclick="switchAuthMode(event)" style="color:var(--accent);">新規登録はこちら</a>
+            </div>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
 </body>
 </html>

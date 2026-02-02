@@ -1,3 +1,12 @@
+// ▼▼▼ Supabase設定 ▼▼▼
+// 念のため変数名を supabaseClient に変更して競合を回避
+const SUPABASE_URL = "https://lgtdoezyzxodekphtpjo.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxndGRvZXp5enhvZGVrcGh0cGpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwMzk5MDksImV4cCI6MjA4NTYxNTkwOX0.ntuiMBp1kZqRw-Lk9f4Av67VIuxvt9CvEJJpR8D_YQI";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null; // ログイン中のユーザー情報
+// ▲▲▲ ここまで ▲▲▼
+
 const socket = io();
 let myRoomId = null;
 
@@ -530,7 +539,6 @@ function drawNextQueue() {
   });
 }
 
-// ★修正: スコア表示処理を復活（HTML要素がある場合のみ更新）
 function updateUI() {
   const scoreEl = document.getElementById('score');
   if (scoreEl) {
@@ -742,8 +750,6 @@ function setupMobileControls() {
 
 setupMobileControls();
 
-// ▼▼▼ 追加: UI操作系の関数をここに集約 ▼▼▼
-
 function backToTop() {
   window.location.reload();
 }
@@ -763,26 +769,191 @@ function toggleRanking() {
       modal.style.display = 'none';
   } else {
       modal.style.display = 'flex';
-      // 開くたびに最新データをサーバーにリクエスト
       if (socket) {
           socket.emit('request_ranking');
       }
   }
 }
 
-// ▼▼▼ 追加: スマホメニュー開閉関数 ▼▼▼
+// ▼▼▼ スマホメニュー制御 ▼▼▼
 function toggleMobileMenu() {
   const menu = document.getElementById('mobile-menu-list');
   menu.classList.toggle('active');
 }
 
-// 画面のどこか（メニュー外）をタップしたら閉じる処理
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('mobile-menu-list');
   const btn = document.querySelector('.mobile-menu-btn');
-  
-  // メニューが開いていて、かつメニューボタン以外・メニュー以外をクリックした場合
   if (menu.classList.contains('active') && !menu.contains(e.target) && !btn.contains(e.target)) {
       menu.classList.remove('active');
+  }
+});
+
+// ▼▼▼ 認証ロジック ▼▼▼
+let isLoginMode = true; 
+
+function toggleLogin() {
+    const modal = document.getElementById('login-modal');
+    if (modal.style.display === 'flex') {
+        modal.style.display = 'none';
+    } else {
+        modal.style.display = 'flex';
+        isLoginMode = true;
+        updateAuthModalUI();
+    }
+}
+
+function switchAuthMode(e) {
+    if(e) e.preventDefault();
+    isLoginMode = !isLoginMode;
+    updateAuthModalUI();
+}
+
+function updateAuthModalUI() {
+    const title = document.getElementById('auth-title');
+    const btn = document.getElementById('auth-submit-btn');
+    const text = document.getElementById('auth-switch-text');
+    const link = document.querySelector('#login-modal a');
+    const errorMsg = document.getElementById('auth-error-msg');
+
+    errorMsg.innerText = ""; 
+
+    if (isLoginMode) {
+        title.innerText = "ログイン";
+        btn.innerText = "ログインする";
+        text.innerText = "アカウントをお持ちでないですか？";
+        link.innerText = "新規登録はこちら";
+    } else {
+        title.innerText = "新規登録";
+        btn.innerText = "登録して始める";
+        text.innerText = "すでにアカウントをお持ちですか？";
+        link.innerText = "ログインはこちら";
+    }
+}
+
+async function handleAuth() {
+    const email = document.getElementById('email-input').value;
+    const password = document.getElementById('password-input').value;
+    const errorMsg = document.getElementById('auth-error-msg');
+
+    if (!email || !password) {
+        errorMsg.innerText = "メールとパスワードを入力してください";
+        return;
+    }
+
+    try {
+        let result;
+        if (isLoginMode) {
+            result = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+        } else {
+            result = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        display_name: email.split('@')[0] 
+                    }
+                }
+            });
+        }
+
+        if (result.error) {
+            throw result.error;
+        }
+
+        toggleLogin();
+
+    } catch (error) {
+        console.error(error);
+        errorMsg.innerText = "エラー: " + error.message;
+    }
+}
+
+async function logout() {
+    await supabaseClient.auth.signOut();
+}
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  // --- PC用要素 ---
+  const pcLoginBtn = document.getElementById('btn-login');
+  const pcUserInfo = document.getElementById('user-info');
+  const pcNameDisplay = document.getElementById('user-name-display');
+  
+  // --- スマホ用要素 ---
+  const mobileMenu = document.getElementById('mobile-menu-list');
+  const mobileLoginBtn = document.getElementById('btn-login-mobile');
+  
+  // --- 共通要素 ---
+  const nameInput = document.getElementById('name-input'); // 入室画面の名前入力欄
+
+  // スマホメニュー内の「ユーザー情報エリア」を探す（なければ作る）
+  let mobileUserInfo = document.getElementById('mobile-user-info');
+  if (!mobileUserInfo) {
+      mobileUserInfo = document.createElement('div');
+      mobileUserInfo.id = 'mobile-user-info';
+      mobileUserInfo.className = 'menu-item';
+      mobileUserInfo.style.borderBottom = '1px solid #333';
+      mobileUserInfo.style.cursor = 'default';
+      mobileUserInfo.style.backgroundColor = 'rgba(255,255,255,0.05)';
+      // メニューの先頭（ログインボタンの場所）に挿入する準備
+  }
+
+  if (session) {
+      // ■■■ ログイン中 ■■■
+      currentUser = session.user;
+      const displayName = currentUser.user_metadata.display_name || currentUser.email.split('@')[0];
+      
+      // 1. PCヘッダー更新
+      if(pcLoginBtn) pcLoginBtn.style.display = 'none';
+      if(pcUserInfo) {
+          pcUserInfo.style.display = 'flex';
+          pcNameDisplay.innerText = displayName;
+      }
+
+      // 2. スマホメニュー更新
+      if(mobileLoginBtn) mobileLoginBtn.style.display = 'none'; // ログインボタン隠す
+      
+      // ユーザー情報＆ログアウトボタンを生成してメニューの先頭に追加
+      mobileUserInfo.innerHTML = `
+        <div style="color:var(--accent); font-weight:bold; margin-bottom:5px;">👤 ${escapeHtml(displayName)}</div>
+        <button onclick="logout(); toggleMobileMenu();" style="background:#333; border:1px solid #555; color:#ccc; padding:10px; border-radius:4px; cursor:pointer; width:100%; box-sizing: border-box;">ログアウト</button>
+      `;
+      // まだ追加されていなければ追加
+      if (!document.getElementById('mobile-user-info')) {
+          mobileMenu.insertBefore(mobileUserInfo, mobileMenu.firstChild);
+      }
+
+      // 3. 入室画面の名前欄
+      if (nameInput) {
+          nameInput.value = displayName;
+          nameInput.readOnly = true; 
+          nameInput.style.backgroundColor = "#333";
+      }
+      
+  } else {
+      // ■■■ ログアウト中 ■■■
+      currentUser = null;
+
+      // 1. PCヘッダー更新
+      if(pcLoginBtn) pcLoginBtn.style.display = 'inline-block';
+      if(pcUserInfo) pcUserInfo.style.display = 'none';
+
+      // 2. スマホメニュー更新
+      if(mobileLoginBtn) mobileLoginBtn.style.display = 'block'; // ログインボタン表示
+      
+      // ユーザー情報エリアがあれば削除
+      if (document.getElementById('mobile-user-info')) {
+          mobileUserInfo.remove();
+      }
+
+      // 3. 入室画面の名前欄
+      if (nameInput) {
+          nameInput.value = "";
+          nameInput.readOnly = false;
+          nameInput.style.backgroundColor = "#000";
+      }
   }
 });
