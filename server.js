@@ -34,6 +34,14 @@ io.on('connection', (socket) => {
         socket.broadcast.to(data.roomId).emit('opponent_board', data);
     });
 
+    // ▼▼▼ 新規：攻撃（お邪魔ライン）の転送 ▼▼▼
+    socket.on('attack', (data) => {
+        // data = { roomId: '...', lines: 2 } (2ライン送れ！という命令)
+        // 相手に「receive_attack」として転送
+        socket.broadcast.to(data.roomId).emit('receive_attack', data.lines);
+    });
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
     // ▼▼▼ 新規：ゲームオーバー通知（敗北宣言） ▼▼▼
     socket.on('player_gameover', (roomId) => {
         // 送ってきた本人は「負け」、部屋の他の人は「勝ち」
