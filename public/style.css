@@ -96,7 +96,6 @@ body {
     text-align: left;
     font-size: 1rem;
     cursor: pointer;
-    /* width: 100%; ←修正: 削除（はみ出し防止） */
 }
 .menu-item:hover { background: rgba(255,255,255,0.1); }
 .menu-item.danger { color: #ff8888; } 
@@ -315,14 +314,14 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
 .rule-section li { margin-bottom: 5px; }
 
 
-/* ▼▼▼ スマホ・タブレット用レスポンシブ設定 (768px以下) ▼▼▼ */
-@media (max-width: 768px) {
+/* ▼▼▼ レスポンシブ設定 (ブレークポイントを1024pxに変更) ▼▼▼ */
+@media (max-width: 1024px) {
     
     /* ヘッダー調整 */
     #main-header { padding: 0 15px; }
     .pc-only { display: none; } /* PC用ボタン非表示 */
     .mobile-menu-btn {
-        display: flex; /* スマホでは表示 */
+        display: flex; /* スマホ・タブレットではメニュー表示 */
     }
 
     /* ゲームエリア調整 */
@@ -390,6 +389,18 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
         display: flex; flex-direction: column; gap: 8px; width: 100%;
         padding: 5px 10px; box-sizing: border-box; position: fixed; bottom: 15px; left: 0; z-index: 50; 
     }
+
+    /* ▼▼▼ 追加: PC（マウスがある端末）では、画面が狭くてもコントローラーを隠す ▼▼▼ */
+    @media (hover: hover) {
+        #mobile-controls {
+            display: none !important;
+        }
+        /* コントローラー分の余白も消す */
+        .game-board-area {
+            margin-bottom: 20px; 
+        }
+    }
+
     .control-row { display: flex; justify-content: center; gap: 12px; width: 100%; }
     
     .control-btn {

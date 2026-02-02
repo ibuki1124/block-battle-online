@@ -5,7 +5,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null; // ログイン中のユーザー情報
-let originalName = ""; // ▼追加: 変更前の名前を保持
+let originalName = ""; // 変更前の名前を保持
 // ▲▲▲ ここまで ▲▲▼
 
 const socket = io();
@@ -17,7 +17,6 @@ const workerBlob = new Blob([`
     self.onmessage = function(e) {
         if (e.data === 'start') {
             if (intervalId) clearInterval(intervalId);
-            // 1秒間に約60回 (16.66ms) の信号を送る
             intervalId = setInterval(() => {
                 self.postMessage('tick');
             }, 1000 / 60);
@@ -30,7 +29,6 @@ const workerBlob = new Blob([`
 
 const gameTimerWorker = new Worker(URL.createObjectURL(workerBlob));
 
-// Workerからの信号を受け取ってゲームを進める
 gameTimerWorker.onmessage = function(e) {
     if (e.data === 'tick') {
         update(Date.now());
@@ -120,10 +118,10 @@ socket.on('receive_attack', (lines) => {
   }
 });
 
-// ▼▼▼ 追加: ランキングデータの受信処理 ▼▼▼
+// ▼▼▼ ランキングデータの受信処理 ▼▼▼
 socket.on('ranking_data', (data) => {
   const list = document.getElementById('ranking-list');
-  list.innerHTML = ''; // クリア
+  list.innerHTML = ''; 
 
   if (!data || data.length === 0) {
       list.innerHTML = '<p style="text-align:center;">データがありません</p>';
@@ -141,7 +139,6 @@ socket.on('ranking_data', (data) => {
   });
 });
 
-// XSS対策用エスケープ関数
 function escapeHtml(text) {
   if (!text) return 'Unknown';
   return text
@@ -377,10 +374,7 @@ function lock() {
 function handleGameOver() {
   stopGameLoop();
     
-  // ソロモードの場合、スコアを送信
-  // myRoomIdが "__solo_" で始まっているかで判定
   if (myRoomId && myRoomId.startsWith('__solo_')) {
-      // 0点のときは送らないなどの制御はお好みで
       if (score > 0 && currentUser) { 
         socket.emit('submit_score', {
             score: score,
@@ -783,13 +777,11 @@ function toggleRanking() {
   }
 }
 
-// ▼▼▼ 追加: ランキングのタブ切り替え ▼▼▼
 function switchRankingTab(mode) {
   const list = document.getElementById('ranking-list');
   const tabGlobal = document.getElementById('tab-global');
   const tabMy = document.getElementById('tab-my');
 
-  // タブの見た目切り替え
   if (mode === 'global') {
       tabGlobal.classList.add('active');
       tabMy.classList.remove('active');
@@ -801,10 +793,8 @@ function switchRankingTab(mode) {
   list.innerHTML = '<p style="text-align:center;">読み込み中...</p>';
 
   if (mode === 'global') {
-      // 全体ランキングをリクエスト
       socket.emit('request_ranking');
   } else {
-      // 自分のランキングをリクエスト
       if (currentUser) {
           socket.emit('request_my_ranking', currentUser.id);
       } else {
@@ -813,7 +803,6 @@ function switchRankingTab(mode) {
   }
 }
 
-// ▼▼▼ スマホメニュー制御 ▼▼▼
 function toggleMobileMenu() {
   const menu = document.getElementById('mobile-menu-list');
   menu.classList.toggle('active');
@@ -827,16 +816,11 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ▼▼▼ 追加: トップページからの名前変更処理 ▼▼▼
-
-// 名前入力欄の監視
 const nameInputEl = document.getElementById('name-input');
 const saveNameBtn = document.getElementById('btn-save-name');
 
 if (nameInputEl) {
-    // 文字が入力されるたびにチェック
     nameInputEl.addEventListener('input', (e) => {
-        // ログインしていない、または名前が変わっていない場合はボタンを隠す
         if (!currentUser || e.target.value.trim() === originalName) {
             saveNameBtn.style.display = 'none';
         } else {
@@ -844,7 +828,6 @@ if (nameInputEl) {
         }
     });
 
-    // Enterキーで保存
     nameInputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && saveNameBtn.style.display === 'block') {
             saveNameFromInput();
@@ -852,7 +835,6 @@ if (nameInputEl) {
     });
 }
 
-// 保存実行
 async function saveNameFromInput() {
   const newName = nameInputEl.value.trim();
   const msgEl = document.getElementById('save-msg');
@@ -860,30 +842,26 @@ async function saveNameFromInput() {
   if (!newName) return;
 
   try {
-      // 1. ログイン情報の名前を更新
       const { data, error } = await supabaseClient.auth.updateUser({
           data: { display_name: newName }
       });
 
       if (error) throw error;
 
-      // ▼▼▼ 追加: データベースにある過去のスコアの名前も一括更新 ▼▼▼
       if (currentUser) {
           const { error: dbError } = await supabaseClient
               .from('scores')
-              .update({ name: newName })   // 名前を新しいものに
-              .eq('user_id', currentUser.id); // 自分のIDのデータだけ
+              .update({ name: newName })
+              .eq('user_id', currentUser.id);
           
           if (dbError) throw dbError;
       }
-      // ▲▲▲ 追加ここまで ▲▲▼
 
-      // 成功時の処理
       originalName = newName; 
       saveNameBtn.style.display = 'none'; 
       
       if(msgEl) {
-          msgEl.innerText = "名前を変更しました！"; // メッセージ微調整
+          msgEl.innerText = "名前を変更しました！";
           msgEl.style.color = "#4ecca3";
           setTimeout(() => { msgEl.innerText = ""; }, 3000);
       }
@@ -897,7 +875,6 @@ async function saveNameFromInput() {
   }
 }
 
-// ▼▼▼ 認証ロジック ▼▼▼
 let isLoginMode = true; 
 
 function toggleLogin() {
@@ -985,7 +962,6 @@ async function logout() {
 }
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
-    // 各要素の取得
     const pcLoginBtn = document.getElementById('btn-login');
     const pcUserInfo = document.getElementById('user-info');
     const pcNameDisplay = document.getElementById('user-name-display');
@@ -994,7 +970,6 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     const nameInput = document.getElementById('name-input'); 
     const saveNameBtn = document.getElementById('btn-save-name');
 
-    // スマホ用ユーザー情報エリア
     let mobileUserInfo = document.getElementById('mobile-user-info');
     if (!mobileUserInfo) {
         mobileUserInfo = document.createElement('div');
@@ -1006,23 +981,18 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     }
 
     if (session) {
-        // --- ログイン中 ---
         currentUser = session.user;
         const displayName = currentUser.user_metadata.display_name || currentUser.email.split('@')[0];
         
-        // 元の名前を記憶
         originalName = displayName;
 
-        // PCヘッダー
         if(pcLoginBtn) pcLoginBtn.style.display = 'none';
         if(pcUserInfo) {
             pcUserInfo.style.display = 'flex';
             pcNameDisplay.innerText = displayName;
         }
 
-        // スマホメニュー
         if(mobileLoginBtn) mobileLoginBtn.style.display = 'none';
-        // スマホメニューからは編集ボタンを消し、ログアウトのみにする
         mobileUserInfo.innerHTML = `
             <div style="color:var(--accent); font-weight:bold; margin-bottom:5px;">👤 ${escapeHtml(displayName)}</div>
             <button onclick="logout(); toggleMobileMenu();" style="background:#333; border:1px solid #555; color:#ccc; padding:10px; border-radius:4px; cursor:pointer; width:100%; box-sizing: border-box;">ログアウト</button>
@@ -1031,36 +1001,29 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
             mobileMenu.insertBefore(mobileUserInfo, mobileMenu.firstChild);
         }
 
-        // 入室画面の名前欄
         if (nameInput) {
             nameInput.value = displayName;
-            // readOnlyや背景色の変更は削除します（編集可能にするため）
             nameInput.readOnly = false; 
             nameInput.style.backgroundColor = "#000"; 
         }
         
     } else {
-        // --- ログアウト中 ---
         currentUser = null;
         originalName = "";
 
-        // PCヘッダー
         if(pcLoginBtn) pcLoginBtn.style.display = 'inline-block';
         if(pcUserInfo) pcUserInfo.style.display = 'none';
 
-        // スマホメニュー
         if(mobileLoginBtn) mobileLoginBtn.style.display = 'block';
         if (document.getElementById('mobile-user-info')) {
             mobileUserInfo.remove();
         }
 
-        // 入室画面
         if (nameInput) {
             nameInput.value = "";
             nameInput.readOnly = false;
             nameInput.style.backgroundColor = "#000";
         }
-        // 保存ボタンも隠す
         if(saveNameBtn) saveNameBtn.style.display = 'none';
     }
 });
