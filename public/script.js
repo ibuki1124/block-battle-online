@@ -5,32 +5,53 @@ let requestId = null;
 // --- 通信部分 ---
 function joinRoom() {
     const roomId = document.getElementById('room-input').value;
+    // ★追加: 名前を取得
+    const playerName = document.getElementById('name-input').value;
+    
     if (roomId) {
         myRoomId = roomId;
-        socket.emit('join_game', roomId);
+        // ★修正: 名前も一緒に送る
+        socket.emit('join_game', roomId, playerName);
     } else alert("部屋IDを入力してください");
 }
 
 function startPractice() {
-    socket.emit('join_practice');
+    // ★追加: 名前を取得
+    const playerName = document.getElementById('name-input').value;
+    // ★修正: 名前も一緒に送る
+    socket.emit('join_practice', playerName);
 }
 
-// mode（'multi' か 'solo'）を受け取る
+// ★新規: サーバーから名前リストが送られてきたら表示を更新
+socket.on('update_names', (players) => {
+    // players = [{ id: '...', name: '...' }, ...]
+    
+    players.forEach(p => {
+        if (p.id === socket.id) {
+            // 自分なら左側のラベルを更新
+            document.getElementById('local-player-label').innerText = p.name;
+        } else {
+            // 他人なら右側のラベルを更新
+            document.getElementById('remote-player-label').innerText = p.name;
+        }
+    });
+});
+
+// ... (以下、変更なし) ...
+// join_success 以降のコードは変更ありませんが、コピーしやすいように全文載せます
+
 socket.on('join_success', (roomId, mode) => {
     document.getElementById('join-screen').style.display = 'none';
     document.getElementById('game-wrapper').style.display = 'block';
     document.getElementById('current-room').innerText = roomId;
     
-    // ★修正：モードに応じて表示を切り替える
     if (mode === 'solo') {
-        // ソロモードの場合
-        document.getElementById('vs-area').style.display = 'none';       // 相手エリア非表示
-        document.getElementById('local-player-label').style.display = 'none'; // "YOU" 非表示
-        document.getElementById('header-info').style.display = 'none';   // "Room:..." ヘッダー非表示
-        
+        document.getElementById('vs-area').style.display = 'none';
+        // ソロモードでも自分の名前は表示したいので、ここは消さないでおく（レイアウト調整）
+        // document.getElementById('local-player-label').style.display = 'none'; // ←削除
+        document.getElementById('header-info').style.display = 'none';
         myRoomId = roomId;
     } else {
-        // マルチモードの場合（リロードなしで切り替えた時用に元に戻す）
         document.getElementById('vs-area').style.display = 'flex';
         document.getElementById('local-player-label').style.display = 'block';
         document.getElementById('header-info').style.display = 'block';
@@ -48,7 +69,6 @@ socket.on('game_start', () => {
     document.getElementById('retry-btn').style.display = 'inline-block';
     document.getElementById('retry-msg').style.display = 'none';
     
-    // 対戦の時だけREADYステータスを表示（ソロはヘッダーごと消えているので不要）
     if (document.getElementById('vs-area').style.display !== 'none') {
         document.getElementById('status').innerText = "READY...";
         document.getElementById('status').style.color = "#fff";
@@ -78,7 +98,6 @@ socket.on('receive_attack', (lines) => {
 function requestRetry() {
     if (myRoomId) {
         socket.emit('restart_request', myRoomId);
-        // ソロの場合は「承認待ち」を出さない
         if (document.getElementById('vs-area').style.display !== 'none') {
             document.getElementById('retry-btn').style.display = 'none';
             document.getElementById('retry-msg').style.display = 'block';
@@ -174,7 +193,7 @@ function initGame() {
     dropCounter = 0;
     levelUpFrames = 0; 
     
-    // ソロモードでなければステータスを更新（ソロならヘッダーがないので何もしない）
+    // ソロモードでなければステータスを更新
     if (document.getElementById('vs-area').style.display !== 'none') {
         document.getElementById('status').innerText = "BATTLE!";
         document.getElementById('status').style.color = "#4ecca3";
@@ -380,6 +399,12 @@ document.addEventListener('keydown', e => {
   if (!current) return; 
 
   const key = e.key.toLowerCase();
+
+  const gameKeys = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'space'];
+  if (gameKeys.includes(key)) {
+      e.preventDefault();
+  }
+
   if ((key === 'arrowleft' || key === 'a') && !collide(current.shape, current.x - 1, current.y)) current.x--;
   if ((key === 'arrowright' || key === 'd') && !collide(current.shape, current.x + 1, current.y)) current.x++;
   

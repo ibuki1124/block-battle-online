@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>1v1 Tetris Online</title>
     <link rel="stylesheet" href="style.css">
-    </head>
+</head>
 <body>
     
     <header id="main-header">
@@ -17,7 +17,10 @@
         <p class="subtitle">リアルタイム対戦テトリス</p>
         
         <div class="input-group">
-            <p>対戦する部屋IDを入力してください</p>
+            <p>プレイヤー名</p>
+            <input type="text" id="name-input" placeholder="名前を入力 (例: Player1)">
+            
+            <p style="margin-top:15px;">部屋ID</p>
             <input type="text" id="room-input" placeholder="例: room1">
         </div>
 
@@ -36,7 +39,6 @@
         <div id="result-overlay" style="display: none;">
             <div class="result-box">
                 <h1 id="result-title">YOU WIN!</h1>
-                
                 <div class="result-actions">
                     <button id="retry-btn" onclick="requestRetry()" class="result-btn primary">もう一度遊ぶ</button>
                     <button onclick="backToTop()" class="result-btn secondary">トップページへ</button>
@@ -76,7 +78,8 @@
             <div id="vs-area" style="display: flex; gap: 20px; align-items: center;">
                 <div class="vs-divider">VS</div>
                 <div class="player-area">
-                    <div class="player-label" style="color:#ff4444;">OPPONENT</div>
+                    <div id="remote-player-label" class="player-label">OPPONENT</div>
+                    
                     <div class="game-container remote">
                         <canvas id="opponent-game" width="300" height="600"></canvas>
                     </div>
@@ -91,10 +94,8 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
-    
     <script>
         function backToTop() {
-            // サーバーとの接続を切ってトップに戻る最も確実な方法はリロード
             window.location.reload();
         }
     </script>
