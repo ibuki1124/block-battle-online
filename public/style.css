@@ -47,12 +47,17 @@ body {
     padding: 5px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; width: auto !important; 
 }
 .nav-btn:hover { border-color: var(--text-main); color: var(--text-main); }
+
 .nav-btn.help-btn { border-color: var(--accent); color: var(--accent); }
 .nav-btn.help-btn:hover { background: rgba(78, 204, 163, 0.2); }
 
-/* ランキングボタン */
 .nav-btn.rank-btn { border-color: var(--secondary); color: var(--secondary); }
 .nav-btn.rank-btn:hover { background: rgba(255, 204, 0, 0.2); }
+
+/* ログインボタン（スタイル統合） */
+.nav-btn.auth-btn { border-color: #aaa; color: #fff; }
+.nav-btn.auth-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
 
 /* ▼▼▼ スマホ用メニュー（デフォルトは非表示） ▼▼▼ */
 .mobile-only { display: none; }
@@ -116,6 +121,28 @@ input {
     border: 2px solid #333; background: #000; color: #fff; width: 100%; box-sizing: border-box; text-align: center;
 }
 input:focus { outline: none; border-color: var(--accent); }
+
+/* 名前入力欄のラッパーと保存ボタン */
+.name-input-wrapper { position: relative; width: 100%; }
+
+.save-name-btn {
+    display: none; /* JSで表示切り替え */
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: auto !important;
+}
+.save-name-btn:hover { background: var(--accent-hover); }
+
 .action-buttons { display: flex; flex-direction: column; gap: 10px; }
 button { 
     padding: 12px 24px; font-size: 16px; cursor: pointer; border: none; border-radius: 5px; 
@@ -128,34 +155,6 @@ button:active { transform: scale(0.98); }
 .secondary-btn:hover { opacity: 0.9; }
 #error-msg { color: #ff4444; margin-top: 15px; height: 20px;}
 
-/* ▼▼▼ 追加: 名前入力欄のスタイル調整 ▼▼▼ */
-.name-input-wrapper {
-    position: relative; /* ボタンを絶対配置するための基準 */
-    width: 100%;
-}
-
-/* 変更ボタン（初期は非表示） */
-.save-name-btn {
-    display: none; /* JSで表示切り替え */
-    position: absolute;
-    top: 50%;
-    right: 5px;
-    transform: translateY(-50%);
-    
-    background: var(--accent);
-    color: #000;
-    border: none;
-    border-radius: 4px;
-    padding: 5px 10px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    cursor: pointer;
-    width: auto !important; /* buttonの幅100%設定を打ち消し */
-}
-
-.save-name-btn:hover {
-    background: var(--accent-hover);
-}
 
 /* ▼▼▼ ゲーム画面全体 ▼▼▼ */
 #game-wrapper { 
@@ -172,7 +171,7 @@ button:active { transform: scale(0.98); }
     background: rgba(255,255,255,0.05); padding: 5px 20px; border-radius: 20px; display: inline-block;
 }
 
-/* PC用レイアウト */
+/* PC用レイアウト（基本） */
 .game-board-area {
     display: flex;
     align-items: flex-start;
@@ -216,8 +215,6 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
 
 .vs-divider { font-size: 3rem; font-weight: 900; font-style: italic; color: #ffcc00; text-shadow: 0 0 10px orange; margin-right: 15px;}
 
-#mobile-controls { display: none; }
-
 /* PC用操作ガイド */
 .controls-guide {
     margin-top: 15px;
@@ -243,7 +240,33 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
 .sub-key { color: #888; font-size: 0.85rem; font-weight: normal; margin-left: 4px; margin-right: 4px; }
 .separator { color: #555; margin: 0 4px; font-weight: bold; }
 
-/* リザルト */
+/* ▼▼▼ モバイルコントローラー（共通スタイル定義） ▼▼▼ */
+/* デフォルトでは非表示。メディアクエリでdisplay:flexにする */
+#mobile-controls {
+    display: none; 
+    flex-direction: column; gap: 8px; width: 100%;
+    padding: 5px 10px; box-sizing: border-box; 
+    position: fixed; bottom: 15px; left: 0; z-index: 50; 
+}
+
+.control-row { display: flex; justify-content: center; gap: 12px; width: 100%; }
+
+.control-btn {
+    width: 55px; height: 55px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
+    color: #fff; font-size: 1.4rem;
+    display: flex; justify-content: center; align-items: center;
+    -webkit-tap-highlight-color: transparent; touch-action: none;
+}
+.control-btn:active { background: rgba(255,255,255,0.3); }
+
+.util-btn { width: 60px; height: 45px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; background: #333; }
+#btn-hard { border-color: var(--accent); color: var(--accent); }
+#btn-hold { border-color: var(--secondary); color: var(--secondary); }
+.action-btn { width: 70px; height: 70px; font-size: 1.8rem; background: rgba(78, 204, 163, 0.2); border-color: var(--accent); }
+
+
+/* ▼▼▼ リザルト画面 ▼▼▼ */
 #result-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(2px);
@@ -258,8 +281,8 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
 .result-btn.secondary { background: transparent; border: 2px solid #555; color: #ccc; }
 #retry-msg { color: #ccc; margin-top: 10px; display: none; }
 
+
 /* ▼▼▼ 視覚効果（Juice Up） ▼▼▼ */
-/* 画面シェイク */
 @keyframes shake {
     0% { transform: translate(0, 0); }
     10% { transform: translate(-2px, -2px); }
@@ -274,25 +297,37 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
 }
 .shake-effect { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
 
-/* ライン消去フラッシュ */
 @keyframes flash {
     0% { background-color: rgba(255, 255, 255, 0.2); }
     100% { background-color: #000; }
 }
 .flash-effect { animation: flash 0.15s ease-out; }
 
+
 /* ▼▼▼ ランキングリスト ▼▼▼ */
 .ranking-list { margin-top: 15px; }
 .rank-item {
     display: flex; justify-content: space-between; padding: 10px;
     border-bottom: 1px solid #333; font-size: 1.1rem;
-    align-items: center; /* 垂直方向中央揃え */
+    align-items: center; 
 }
 .rank-item:nth-child(1) { color: #ffd700; font-weight: bold; font-size: 1.3rem; } /* 金 */
 .rank-item:nth-child(2) { color: #c0c0c0; font-weight: bold; } /* 銀 */
 .rank-item:nth-child(3) { color: #cd7f32; font-weight: bold; } /* 銅 */
 .rank-name { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
 .rank-score { font-family: monospace; }
+
+.ranking-tabs {
+    display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;
+    border-bottom: 1px solid #333; padding-bottom: 10px;
+}
+.tab-btn {
+    background: transparent; border: none; color: #888; font-size: 1rem;
+    cursor: pointer; padding: 5px 10px; border-bottom: 2px solid transparent; transition: all 0.2s;
+}
+.tab-btn:hover { color: #ccc; }
+.tab-btn.active { color: var(--accent); border-bottom: 2px solid var(--accent); font-weight: bold; }
+
 
 /* ▼▼▼ モーダル ▼▼▼ */
 .modal {
@@ -313,16 +348,16 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
 .rule-section ul { list-style: none; padding-left: 10px; color: #ddd; font-size: 0.95rem; line-height: 1.6; }
 .rule-section li { margin-bottom: 5px; }
 
+@media (max-width: 768px) {
+.pc-only { display: none; } /* PC用ボタン非表示 */
+.mobile-menu-btn { display: flex; } /* メニュー表示 */
+}
 
 /* ▼▼▼ レスポンシブ設定 (ブレークポイントを1024pxに変更) ▼▼▼ */
 @media (max-width: 1024px) {
     
     /* ヘッダー調整 */
     #main-header { padding: 0 15px; }
-    .pc-only { display: none; } /* PC用ボタン非表示 */
-    .mobile-menu-btn {
-        display: flex; /* スマホ・タブレットではメニュー表示 */
-    }
 
     /* ゲームエリア調整 */
     #game-wrapper {
@@ -357,16 +392,18 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
 
     /* キャンバスサイズ */
     .game-container.local canvas {
-        width: 70%; height: auto; border: 1px solid #333; background: #000; max-width: none; 
+        height: auto;
+        width: auto;       /* 幅はなりゆきにする */
+        max-width: 100%;   /* 親要素からはみ出さない */
+        border: 1px solid #333; 
+        background: #000;
     }
     body.solo-mode .game-container.local canvas {
-        width: 80%; max-width: 350px; 
+        width: 50%; max-width: 300px; 
     }
 
     .side-panel { width: 22%; gap: 10px; } 
     .stat-box { padding: 2px; border-left-width: 2px; }
-    
-    .preview-canvas { width: 100%; height: auto; }
 
     /* 相手エリア */
     #vs-area {
@@ -384,81 +421,142 @@ body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 
     
     .controls-guide { display: none; }
 
-    /* モバイルコントローラー */
-    #mobile-controls {
-        display: flex; flex-direction: column; gap: 8px; width: 100%;
-        padding: 5px 10px; box-sizing: border-box; position: fixed; bottom: 15px; left: 0; z-index: 50; 
-    }
+    /* モバイルコントローラー（表示ON） */
+    #mobile-controls { display: flex; }
 
     /* ▼▼▼ 追加: PC（マウスがある端末）では、画面が狭くてもコントローラーを隠す ▼▼▼ */
-    @media (hover: hover) {
-        #mobile-controls {
-            display: none !important;
-        }
+    @media (hover: hover) and (pointer: fine) {
+        #mobile-controls { display: none; }
         /* コントローラー分の余白も消す */
-        .game-board-area {
-            margin-bottom: 20px; 
-        }
+        .game-board-area { margin-bottom: 20px; }
+        .controls-guide { display: flex; }
     }
-
-    .control-row { display: flex; justify-content: center; gap: 12px; width: 100%; }
-    
-    .control-btn {
-        width: 55px; height: 55px; border-radius: 50%;
-        border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
-        color: #fff; font-size: 1.4rem;
-        display: flex; justify-content: center; align-items: center;
-        -webkit-tap-highlight-color: transparent; touch-action: none;
-    }
-    .control-btn:active { background: rgba(255,255,255,0.3); }
-    
-    .util-btn { width: 60px; height: 45px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; background: #333; }
-    #btn-hard { border-color: var(--accent); color: var(--accent); }
-    #btn-hold { border-color: var(--secondary); color: var(--secondary); }
-    .action-btn { width: 70px; height: 70px; font-size: 1.8rem; background: rgba(78, 204, 163, 0.2); border-color: var(--accent); }
     
     h1 { font-size: 2rem; }
     #join-screen { margin-top: 20px; padding: 30px; }
     #result-overlay { z-index: 2000; }
+
+    /* ▼▼▼ モバイル対戦時のレイアウト調整 ▼▼▼ */
+    
+    /* 1. ソロモード以外（対戦時）の大枠設定 */
+    body:not(.solo-mode) .game-board-area {
+        width: 100%;
+        justify-content: space-between;
+        gap: 2px;
+    }
+
+    /* 2. 自分のエリア（対戦時） */
+    body:not(.solo-mode) #my-game-area {
+        width: 62%; 
+        display: flex;       
+        flex-direction: column;
+    }
+
+    /* 修正点1: 名前の位置調整 */
+    body:not(.solo-mode) #local-player-label {
+        width: 70%;          /* 盤面と同じ幅にする */
+        margin-left: auto;   /* 右寄せ */
+        margin-right: 0;
+        margin-bottom: 2px;
+        text-align: center; 
+    }
+
+    /* 3. 自分のコンテナ内部: Next/Holdを左側に */
+    body:not(.solo-mode) .game-container.local {
+        flex-direction: row-reverse; 
+        gap: 3px;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    /* 4. 自分の盤面キャンバス */
+    body:not(.solo-mode) .game-container.local canvas {
+        width: 70% !important; 
+        height: auto !important;
+        border: 1px solid #333;
+    }
+
+    /* 5. Next/Holdエリア */
+    body:not(.solo-mode) .side-panel {
+        width: 28% !important; 
+        gap: 4px;
+        justify-content: flex-start;
+        padding-top: 0;
+    }
+
+    body:not(.solo-mode) .preview-canvas {
+        width: 100% !important; 
+        height: auto !important;
+        border: 1px solid #444;
+        background: #000;
+    }
+
+    body:not(.solo-mode) .stat-label {
+        font-size: 0.6rem;
+        margin-bottom: 1px;
+    }
+    
+    body:not(.solo-mode) .stat-box {
+        padding: 0;
+        background: transparent;
+        border: none;
+    }
+
+    /* 6. 相手エリア */
+    body:not(.solo-mode) #vs-area {
+        width: 36%;
+        display: flex !important;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+
+    body:not(.solo-mode) .game-container.remote {
+        padding: 0;
+        width: 100%;
+        background: transparent;
+    }
+
+    body:not(.solo-mode) .game-container.remote canvas {
+        width: 100% !important;
+        height: auto !important;
+        border: 1px solid #555;
+    }
+
+    /* 修正点2: VS文字の復活と調整 */
+    body:not(.solo-mode) .vs-divider { 
+        display: block;      
+        font-size: 1.5rem;   
+        margin: 0 0 5px 0;   
+        line-height: 1;
+        text-shadow: 0 0 5px orange;
+    }
+
+    body:not(.solo-mode) .player-label { 
+        font-size: 0.7rem; 
+        margin-bottom: 2px; 
+    }
 }
 
-/* ログインボタン */
-.nav-btn.auth-btn {
-    border-color: #aaa;
-    color: #fff;
-}
-.nav-btn.auth-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
 
-/* ▼▼▼ ランキングタブのデザイン ▼▼▼ */
-.ranking-tabs {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 15px;
-    border-bottom: 1px solid #333;
-    padding-bottom: 10px;
-}
+/* ▼▼▼ タブレット横画面など、幅広でもタッチ操作が必要な端末用 ▼▼▼ */
+/* コントローラーのスタイル定義はグローバルへ移動済み */
+@media (hover: none) and (pointer: coarse) {
+    
+    /* 1. PC用の操作ガイドを強制非表示 */
+    .controls-guide { display: none !important; }
 
-.tab-btn {
-    background: transparent;
-    border: none;
-    color: #888;
-    font-size: 1rem;
-    cursor: pointer;
-    padding: 5px 10px;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-}
+    /* 2. PC用のヘッダーボタンを隠し、モバイルメニューを出す */
+    .pc-only { display: none !important; }
+    .mobile-menu-btn { display: flex !important; }
 
-.tab-btn:hover {
-    color: #ccc;
-}
+    /* 3. コントローラーエリアを強制表示（スタイルはグローバル定義を参照） */
+    #mobile-controls {
+        display: flex !important;
+    }
 
-/* 選択中のタブ */
-.tab-btn.active {
-    color: var(--accent);
-    border-bottom: 2px solid var(--accent);
-    font-weight: bold;
+    /* 4. 盤面がコントローラーに隠れないよう底上げ */
+    .game-board-area {
+        margin-bottom: 160px !important; 
+    }
 }
