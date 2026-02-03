@@ -381,12 +381,14 @@ function handleGameOver() {
             userId: currentUser.id
         });
       }
+      showResult("over");
+  }else{
+    showResult(false);
   }
 
   current = null;
   draw(); 
   socket.emit('player_gameover', myRoomId);
-  showResult(false);
 }
 
 function stopGameLoop() {
@@ -404,9 +406,12 @@ function showResult(isWin) {
     const title = document.getElementById('result-title');
     overlay.style.display = 'flex';
     
-    if (isWin) {
-        title.innerText = "YOU WIN!";
-        title.style.color = "#4ecca3";
+    if (isWin === "over") {
+      title.innerText = "GAME OVER";
+      title.style.color = "#ff4444";
+    } else if (isWin) {
+      title.innerText = "YOU WIN!";
+      title.style.color = "#4ecca3";
     } else {
         title.innerText = "YOU LOSE...";
         title.style.color = "#ff4444";
