@@ -113,6 +113,39 @@ body {
     border-radius: 15px; box-shadow: 0 0 30px rgba(0,0,0,0.5);
     width: 90%; max-width: 400px; box-sizing: border-box;
 }
+
+/* ▼▼▼ 難易度選択セレクトボックス ▼▼▼ */
+#difficulty-select {
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 2px solid #333;
+    background: #000;
+    color: #fff;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    cursor: pointer;
+}
+#difficulty-select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* ▼▼▼ ポーズボタン関連 ▼▼▼ */
+/* PC用のポーズボタン表示制御 */
+body.solo-mode #pc-pause-btn {
+    display: block !important; /* ソロモード時のみ表示 */
+}
+
+/* モバイルコントローラーの列調整（ボタンが4つになるので調整） */
+/* 既存の .control-row 定義を少し調整してボタンが収まるようにします */
+.control-row { 
+    display: flex; 
+    justify-content: center; 
+    gap: 10px; /* 少し狭める */
+    width: 100%; 
+}
 h1 { margin: 0; font-size: 2.5rem; }
 .subtitle { color: var(--text-sub); margin-bottom: 30px; }
 .input-group { margin-bottom: 20px; }

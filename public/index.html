@@ -62,12 +62,21 @@
         
         <div class="input-group">
             <p>プレイヤー名</p>
-            
             <div class="name-input-wrapper">
                 <input type="text" id="name-input" placeholder="例: Player1 (最大10文字)" maxlength="10">
                 <button id="btn-save-name" onclick="saveNameFromInput()" class="save-name-btn">変更</button>
             </div>
-            <p style="margin-top:15px;">部屋ID</p>
+
+            <p style="margin-top:15px;">難易度 (ソロプレイ用)</p>
+            <div class="difficulty-wrapper" style="margin-bottom: 15px;">
+                <select id="difficulty-select">
+                    <option value="1">EASY</option>
+                    <option value="5" selected>NORMAL</option>
+                    <option value="10">HARD</option>
+                </select>
+            </div>
+
+            <p>部屋ID (対戦用)</p>
             <input type="text" id="room-input" placeholder="例: room1" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');">
         </div>
 
@@ -95,8 +104,11 @@
             </div>
         </div>
 
+        <button id="pc-pause-btn" onclick="togglePause()" class="nav-btn" style="position:absolute; top:10px; right:10px; z-index:100; display:none;">
+            ⏸ Pause
+        </button>
+
         <div class="game-board-area">
-            
             <div id="my-game-area" class="player-area">
                 <div id="local-player-label" class="player-label">YOU</div>
                 <div class="game-container local">
@@ -127,7 +139,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
         
         <div id="mobile-controls">
@@ -135,6 +146,7 @@
                 <button id="btn-hold" class="control-btn util-btn">HOLD</button>
                 <button id="btn-hard" class="control-btn util-btn">HARD</button>
                 <button id="btn-rotate" class="control-btn action-btn">↻</button>
+                <button id="btn-pause" class="control-btn util-btn" onclick="togglePause()" style="background:#555;">⏸</button>
             </div>
             <div class="control-row">
                 <button id="btn-left" class="control-btn move-btn">←</button>
@@ -166,6 +178,20 @@
                 <span class="action-name">ホールド：</span>
                 <span class="key-badge wide">Shift</span>
             </div>
+            <div class="guide-item">
+                <span class="action-name">ポーズ：</span>
+                <span class="key-badge wide">Esc</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="pause-modal" class="modal" style="background: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="text-align: center; max-width: 300px;">
+            <h2 style="color: #fff; border: none;">PAUSED</h2>
+            <div class="action-buttons">
+                <button onclick="togglePause()" class="primary-btn">再開する</button>
+                <button onclick="backToTop()" class="secondary-btn" style="background: #555; border: 1px solid #777;">タイトルへ戻る</button>
+            </div>
         </div>
     </div>
 
@@ -181,6 +207,7 @@
                     <li><strong>ソフトドロップ:</strong> ↓ (または S)</li>
                     <li><strong>ハードドロップ:</strong> Space</li>
                     <li><strong>ホールド:</strong> Shift</li>
+                    <li><strong>ポーズ:</strong> Esc または P</li>
                 </ul>
             </div>
             <div class="rule-section">

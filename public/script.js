@@ -48,8 +48,18 @@ function joinRoom() {
     } else alert("部屋IDを入力してください");
 }
 
+let isPaused = false;   // ポーズ状態管理
+let startLevel = 1;     // 開始レベル（難易度）
+
 function startPractice() {
     const playerName = document.getElementById('name-input').value;
+    const diffSelect = document.getElementById('difficulty-select');
+    if (diffSelect) {
+        startLevel = parseInt(diffSelect.value, 10);
+    } else {
+        startLevel = 1;
+    }
+    console.log("選択された難易度:", startLevel);
     socket.emit('join_practice', playerName);
 }
 
@@ -275,7 +285,17 @@ function initGame() {
     stopGameLoop(); 
 
     board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-    score = 0; lines = 0; level = 1; combo = -1;
+    console.log("initGame開始: startLevel =", startLevel);
+    
+    if (myRoomId && myRoomId.startsWith('__solo_')) {
+        // ソロモードなら確実に startLevel を適用
+        level = startLevel;
+    } else {
+        // 対戦モードなら強制的に Lv.1 から（公平性のため）
+        level = 1;
+    }
+    console.log("ゲーム開始レベル:", level);
+    score = 0; lines = 0; combo = -1;
     bag = []; nextQueue = []; holdType = null; canHold = true;
     
     lastTime = 0; 
@@ -564,7 +584,47 @@ function updateUI() {
   }
 }
 
+// ▼▼▼ 追加: ポーズ機能 ▼▼▼
+function togglePause() {
+    // プレイ中でない、または対戦モード（__solo_で始まらない部屋）の場合は無視
+    if (!isPlaying && !isPaused) return;
+    if (myRoomId && !myRoomId.startsWith('__solo_')) return; 
+
+    const modal = document.getElementById('pause-modal');
+    isPaused = !isPaused;
+
+    if (isPaused) {
+        // ポーズ開始
+        gameTimerWorker.postMessage('stop'); // タイマー停止
+        if(levelTimer) clearInterval(levelTimer); // レベルアップタイマーも停止
+        modal.style.display = 'flex';
+    } else {
+        // ポーズ解除
+        modal.style.display = 'none';
+        lastTime = 0; // デルタタイムが跳ね上がらないようにリセット
+        
+        // レベルアップタイマー再開
+        levelTimer = setInterval(() => {
+            if (level < 20) {
+                level++;
+                updateUI();
+                levelUpFrames = 120;
+            }
+        }, 30000);
+        
+        gameTimerWorker.postMessage('start'); // タイマー再開
+        draw(); // 再描画
+    }
+}
+
 document.addEventListener('keydown', e => {
+  // 既存の入力制御の前に追加
+  if (e.key === 'Escape' || e.key.toLowerCase() === 'p') {
+      togglePause();
+      return;
+  }
+
+  if (isPaused) return; // ポーズ中は他の操作を受け付けない
   if (document.getElementById('join-screen').style.display !== 'none') return;
   if (!isPlaying) return; 
   if (!current) return; 
@@ -608,7 +668,7 @@ document.addEventListener('keydown', e => {
 });
 
 function update(time = 0) {
-  if (!paused && isPlaying) {
+    if (!paused && isPlaying && !isPaused) {
     if (!lastTime) {
         lastTime = time;
     }
