@@ -134,15 +134,26 @@ io.on('connection', (socket) => {
 
     // ランキング取得リクエスト
     socket.on('request_ranking', async () => {
-        // スコアの高い順にトップ10を取得
+        // まずスコアの高い順に多めにデータを取得 (例: 上位100件)
         const { data, error } = await supabase
             .from('scores')
-            .select('name, score, created_at')
+            .select('name, score, user_id, created_at') // user_id も取得して識別する
             .order('score', { ascending: false })
-            .limit(10);
-        
+            .limit(100);
         if (!error) {
-            socket.emit('ranking_data', data);
+            // ユーザーごとの最高スコアのみを抽出する処理
+            const uniqueRanking = [];
+            const userIds = new Set();
+            for (const record of data) {
+                // まだランクインしていないユーザーなら追加
+                if (!userIds.has(record.user_id)) {
+                    uniqueRanking.push(record);
+                    userIds.add(record.user_id);
+                }
+                // 10人に達したら終了
+                if (uniqueRanking.length >= 10) break;
+            }
+            socket.emit('ranking_data', uniqueRanking);
         } else {
             console.error('Ranking fetch error:', error);
         }
