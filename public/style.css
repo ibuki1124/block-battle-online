@@ -236,6 +236,15 @@ button:active { transform: scale(0.98); }
 #score-box { display: none; } /* デフォルト非表示 */
 body.solo-mode #score-box { display: block; } /* ソロモード時のみ表示 */
 
+/* デフォルトは両方非表示 */
+#level-box-vs, #level-box-solo { display: none; }
+
+/* ソロモード時: solo用を表示 */
+body.solo-mode #level-box-solo { display: block; }
+
+/* 対戦モード時(solo-modeクラスがない時): vs用を表示 */
+body:not(.solo-mode) #level-box-vs { display: block; }
+
 .preview-canvas { background: #000; border: 1px solid #333; border-radius: 4px; }
 
 .vs-divider { font-size: 3rem; font-weight: 900; font-style: italic; color: #ffcc00; text-shadow: 0 0 10px orange; margin-right: 15px;}

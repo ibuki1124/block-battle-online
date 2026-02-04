@@ -407,6 +407,11 @@ function draw() {
 function updateUI() {
   const scoreEl = document.getElementById('score');
   if (scoreEl) scoreEl.innerText = score.toLocaleString();
+
+  const levelVsEl = document.getElementById('level-vs');
+  const levelSoloEl = document.getElementById('level-solo');
+  if (levelVsEl) levelVsEl.innerText = level;
+  if (levelSoloEl) levelSoloEl.innerText = level;
 }
 
 function stopGameLoop() {
@@ -448,9 +453,24 @@ function attemptRotation(dir) {
 function showResult(isWin) {
     const overlay = document.getElementById('result-overlay');
     const title = document.getElementById('result-title');
+    const scoreVal = document.getElementById('final-score-value');
     overlay.style.display = 'flex';
-    if (isWin) { title.innerText = "YOU WIN!"; title.style.color = "#4ecca3"; } 
-    else { title.innerText = "YOU LOSE..."; title.style.color = "#ff4444"; }
+    // スコアを表示
+    if (scoreVal) scoreVal.innerText = score.toLocaleString();
+
+    if (isWin === true) {
+        // 完全勝利 (対戦で勝った)
+        title.innerText = "YOU WIN!";
+        title.style.color = "#4ecca3";
+    } else if (isWin === false) {
+        // 敗北 (対戦で負けた)
+        title.innerText = "YOU LOSE...";
+        title.style.color = "#ff4444";
+    } else if (isWin === "over") {
+        // ソロモードでのゲームオーバー
+        title.innerText = "GAME OVER";
+        title.style.color = "#ff4444"; // または白や黄色でもOK
+    }
 }
 
 function handleGameOver() {
@@ -461,13 +481,15 @@ function handleGameOver() {
             score: score, 
             userId: currentUser.id, 
             difficulty: currentDifficulty // 難易度も送信
-        });
+        });upda
       }
+      showResult("over");
+  }else {
+    showResult(false);
   }
   current = null;
   draw(); 
   socket.emit('player_gameover', myRoomId);
-  showResult(false);
 }
 
 function addGarbage(linesCount) {
