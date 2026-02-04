@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tetris Online</title>
+    <link href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -33,7 +34,7 @@
         </div>
 
         <div class="mobile-menu-btn mobile-only" onclick="toggleMobileMenu()">
-            ≡
+            <i class="fas fa-bars"></i>
         </div>
 
         <div id="mobile-menu-list" class="mobile-menu-list">
@@ -152,7 +153,7 @@
             </div>
         </div>
 
-        <button id="btn-pause" class="control-btn util-btn" onclick="togglePause()" style="background:#555;">⏸</button>
+        <button id="btn-pause" class="control-btn util-btn" onclick="togglePause()" style="background:#555;"><i class="fas fa-pause"></i></button>
         <div class="controls-guide">
             <div class="guide-item">
                 <span class="action-name">移動：</span>
