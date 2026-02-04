@@ -106,7 +106,8 @@ socket.on('join_success', (roomId, mode) => {
     document.getElementById('game-wrapper').style.display = 'flex'; 
     document.getElementById('current-room').innerText = roomId;
     
-    // ▼▼▼ 修正: ポーズボタンの表示制御 ▼▼▼
+    const pcPauseBtn = document.getElementById('pc-pause-btn');
+    // ▼▼▼ 追加: 対戦時はポーズボタンなどを隠す ▼▼▼
     const mobilePauseBtn = document.getElementById('btn-pause');
     const guidePause = document.getElementById('guide-pause');
 
@@ -115,7 +116,6 @@ socket.on('join_success', (roomId, mode) => {
         document.getElementById('vs-area').style.display = 'none';
         document.getElementById('header-info').style.display = 'none';
         
-        // ソロモードなら表示
         if(mobilePauseBtn) mobilePauseBtn.style.display = 'flex';
         if(guidePause) guidePause.style.display = 'flex';
 
@@ -126,7 +126,6 @@ socket.on('join_success', (roomId, mode) => {
         document.getElementById('local-player-label').style.display = 'block';
         document.getElementById('header-info').style.display = 'block';
         
-        // 対戦モードなら非表示
         if(mobilePauseBtn) mobilePauseBtn.style.display = 'none';
         if(guidePause) guidePause.style.display = 'none';
         
@@ -134,7 +133,6 @@ socket.on('join_success', (roomId, mode) => {
         document.getElementById('status').style.color = "#ccc";
         myRoomId = roomId;
     }
-    // ▲▲▲ ここまで ▲▲▲
 });
 
 socket.on('join_full', () => { document.getElementById('error-msg').innerText = "満員です！"; });
@@ -364,6 +362,24 @@ function drawBlock(c, x, y, color, size = BLOCK, isGhost = false) {
     }
 }
 
+// ▼▼▼ 修正: drawOpponent 関数を復活 ▼▼▼
+function drawOpponent(opBoard, opCurrent) {
+    if (!opponentCtx) return;
+    opponentCtx.clearRect(0, 0, opponentCanvas.width, opponentCanvas.height);
+    if (opBoard) {
+        opBoard.forEach((row, y) => row.forEach((type, x) => 
+            type && drawBlock(opponentCtx, x, y, COLORS[type])
+        ));
+    }
+    if (opCurrent) {
+        const shape = SHAPES[opCurrent.type];
+        opCurrent.shape.forEach((row, dy) => row.forEach((v, dx) => 
+            v && drawBlock(opponentCtx, opCurrent.x + dx, opCurrent.y + dy, COLORS[opCurrent.type])
+        ));
+    }
+}
+// ▲▲▲ ここまで ▲▲▲
+
 function draw() {
   if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -453,24 +469,31 @@ function attemptRotation(dir) {
 function showResult(isWin) {
     const overlay = document.getElementById('result-overlay');
     const title = document.getElementById('result-title');
-    const scoreVal = document.getElementById('final-score-value');
-    overlay.style.display = 'flex';
-    // スコアを表示
-    if (scoreVal) scoreVal.innerText = score.toLocaleString();
+    const scoreVal = document.getElementById('result-score'); // スコア表示の親div
+    const scoreNum = document.getElementById('final-score-value'); // 数字部分
 
-    if (isWin === true) {
-        // 完全勝利 (対戦で勝った)
-        title.innerText = "YOU WIN!";
-        title.style.color = "#4ecca3";
-    } else if (isWin === false) {
-        // 敗北 (対戦で負けた)
-        title.innerText = "YOU LOSE...";
-        title.style.color = "#ff4444";
-    } else if (isWin === "over") {
-        // ソロモードでのゲームオーバー
+    overlay.style.display = 'flex';
+    
+    // ▼▼▼ 修正: 対戦モードならスコアを隠す、ソロなら表示 ▼▼▼
+    if (isWin === "over") {
+        // ソロモード
+        if (scoreNum) scoreNum.innerText = score.toLocaleString();
+        if (scoreVal) scoreVal.style.display = 'block';
         title.innerText = "GAME OVER";
-        title.style.color = "#ff4444"; // または白や黄色でもOK
+        title.style.color = "#ff4444"; 
+    } else {
+        // 対戦モード (勝ち/負け)
+        if (scoreVal) scoreVal.style.display = 'none'; // スコアを隠す
+        
+        if (isWin === true) {
+            title.innerText = "YOU WIN!";
+            title.style.color = "#4ecca3";
+        } else {
+            title.innerText = "YOU LOSE...";
+            title.style.color = "#ff4444";
+        }
     }
+    // ▲▲▲ ここまで ▲▲▲
 }
 
 function handleGameOver() {
@@ -480,8 +503,8 @@ function handleGameOver() {
         socket.emit('submit_score', { 
             score: score, 
             userId: currentUser.id, 
-            difficulty: currentDifficulty // 難易度も送信
-        });upda
+            difficulty: currentDifficulty 
+        });
       }
       showResult("over");
   }else {
