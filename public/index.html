@@ -73,9 +73,11 @@
 
         <div class="action-buttons">
             <button onclick="joinRoom()" class="primary-btn">入室 / 作成</button>
+            <button id="btn-room-list" onclick="toggleRoomList()" class="secondary-btn" style="display:none; background:#333; border:1px solid #555; color: #fff;">
+                <i class="fas fa-users"></i> 待機中の部屋を見る <span id="room-count-badge" class="badge">0</span>
+            </button>
         </div>
-
-        <p style="margin-top:15px;">1人用モード選択</p>
+        <p style="margin-top:20px;">1人用モード選択</p>
         <div class="difficulty-wrapper" style="margin-bottom: 15px;">
             <select id="difficulty-select">
                 <option value="easy">易（速度一定）</option>
@@ -205,6 +207,17 @@
         </div>
     </div>
 
+    <div id="room-list-modal" class="modal" onclick="toggleRoomList()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="toggleRoomList()">&times;</span>
+            <h2><i class="fas fa-users"></i> 待機中の部屋</h2>
+            <div id="room-list" class="room-list">
+                </div>
+            <div style="margin-top: 20px;">
+                <button onclick="toggleRoomList()" class="primary-btn" style="width: 100%;">閉じる</button>
+            </div>
+        </div>
+    </div>
     <div id="rules-modal" class="modal" onclick="toggleRules()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="toggleRules()">&times;</span>

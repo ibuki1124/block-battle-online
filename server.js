@@ -1,8 +1,8 @@
-require('dotenv').config(); // 環境変数を読み込む
+require('dotenv').config(); 
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
-const { createClient } = require('@supabase/supabase-js'); // 追加
+const { createClient } = require('@supabase/supabase-js'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -18,8 +18,34 @@ app.use(express.static('public'));
 const roomRestartState = {};
 const playerNames = {}; 
 
+// ▼▼▼ 追加: ルーム一覧を配信する関数 ▼▼▼
+function notifyRoomList() {
+    const rooms = io.sockets.adapter.rooms;
+    const waitingRooms = [];
+
+    rooms.forEach((members, roomId) => {
+        // 1. ソロモードの部屋は除外
+        if (roomId.startsWith('__solo_')) return;
+        // 2. ソケットID個別の部屋（デフォルト部屋）は除外
+        // (io.sockets.sockets.has(roomId) で判定可能)
+        if (io.sockets.sockets.has(roomId)) return;
+
+        // 3. 人数が1人の部屋だけを「待機中」としてリストアップ
+        if (members.size === 1) {
+            waitingRooms.push(roomId);
+        }
+    });
+
+    // 全員に最新の待機部屋リストを送信
+    io.emit('update_room_list', waitingRooms);
+}
+// ▲▲▲ ここまで ▲▲▲
+
 io.on('connection', (socket) => {
     
+    // 接続時にも最新リストを送る
+    notifyRoomList();
+
     // 入室
     socket.on('join_game', (roomId, playerName) => {
         const room = io.sockets.adapter.rooms.get(roomId);
@@ -43,6 +69,10 @@ io.on('connection', (socket) => {
             if (userCount + 1 === 2) {
                 io.to(roomId).emit('game_start');
             }
+            
+            // ▼▼▼ 追加: 部屋状況が変わったのでリスト更新通知 ▼▼▼
+            notifyRoomList(); 
+            // ▲▲▲
         } else {
             socket.emit('join_full');
         }
@@ -55,6 +85,7 @@ io.on('connection', (socket) => {
         socket.emit('join_success', roomId, 'solo');
         socket.emit('update_names', [{ id: socket.id, name: playerNames[socket.id] }]);
         socket.emit('game_start');
+        // ソロ部屋はリストに載らないので notifyRoomList は不要
     });
 
     socket.on('disconnecting', () => {
@@ -66,9 +97,13 @@ io.on('connection', (socket) => {
                 socket.to(roomId).emit('opponent_left');
             }
         }
+        // ▼▼▼ 追加: 退出直前の状態ではまだadapterに残っているため、少し待つか、disconnectで処理 ▼▼▼
     });
 
-    socket.on('disconnect', () => {});
+    socket.on('disconnect', () => {
+        // ▼▼▼ 追加: 完全に切断された後にリスト更新 ▼▼▼
+        notifyRoomList();
+    });
 
     socket.on('update_board', (data) => {
         socket.broadcast.to(data.roomId).emit('opponent_board', data);
@@ -96,60 +131,37 @@ io.on('connection', (socket) => {
         if (currentMemberCount < 2) {
             socket.emit('reset_waiting');
             roomRestartState[roomId].clear();
+            
+            // ▼▼▼ 追加: リセット時に待機状態に戻るのでリスト更新 ▼▼▼
+            notifyRoomList();
             return;
         }
         if (roomRestartState[roomId].size >= currentMemberCount) {
             io.to(roomId).emit('game_start');
             roomRestartState[roomId].clear(); 
+            // ▼▼▼ 追加: ゲーム開始（満員）なのでリスト更新 ▼▼▼
+            notifyRoomList();
         }
     });
 
-    // ▼▼▼ ランキング機能 (難易度対応版) ▼▼▼
-
-    // スコア送信（ソロモード終了時）
+    // ▼▼▼ ランキング機能 ▼▼▼
+    // (変更なし)
     socket.on('submit_score', async (data) => {
         const name = playerNames[socket.id] || 'Guest';
-        
         const score = data.score;
         const userId = data.userId;
-        // 難易度を取得。送られてこない場合は 'normal' とする
         const difficulty = data.difficulty || 'normal';
-
         if (!userId) return; 
-
-        // データベースに保存（difficulty も追加）
-        const { error } = await supabase
-            .from('scores')
-            .insert([
-                { 
-                    name: name, 
-                    score: score,
-                    user_id: userId,
-                    difficulty: difficulty // 難易度を保存
-                }
-            ]);
-        
+        const { error } = await supabase.from('scores').insert([{ name: name, score: score, user_id: userId, difficulty: difficulty }]);
         if (error) console.error('Score save error:', error);
     });
 
-    // ランキング取得リクエスト (難易度指定対応)
     socket.on('request_ranking', async (difficulty) => {
-        // 難易度が指定されていない場合は 'normal' をデフォルトにする
         const targetDiff = difficulty || 'normal';
-
-        // 指定された難易度の中でスコアの高い順にデータを取得
-        const { data, error } = await supabase
-            .from('scores')
-            .select('name, score, user_id, created_at')
-            .eq('difficulty', targetDiff) // ★ここで難易度フィルタリング
-            .order('score', { ascending: false })
-            .limit(100);
-        
+        const { data, error } = await supabase.from('scores').select('name, score, user_id, created_at').eq('difficulty', targetDiff).order('score', { ascending: false }).limit(100);
         if (!error) {
-            // ユーザーごとの最高スコアのみを抽出する処理
             const uniqueRanking = [];
             const userIds = new Set();
-
             for (const record of data) {
                 if (!userIds.has(record.user_id)) {
                     uniqueRanking.push(record);
@@ -157,19 +169,14 @@ io.on('connection', (socket) => {
                 }
                 if (uniqueRanking.length >= 10) break;
             }
-
             socket.emit('ranking_data', uniqueRanking);
         } else {
             console.error('Ranking fetch error:', error);
         }
     });
 
-    // 個人ランキング取得リクエスト (難易度指定対応)
     socket.on('request_my_ranking', async (data) => {
-        // data がオブジェクト { userId, difficulty } で来ることを想定
-        // 以前のコード(userIdのみ)との互換性のためチェックを入れる
         let userId, difficulty;
-        
         if (typeof data === 'object') {
             userId = data.userId;
             difficulty = data.difficulty || 'normal';
@@ -177,18 +184,8 @@ io.on('connection', (socket) => {
             userId = data;
             difficulty = 'normal';
         }
-
         if (!userId) return;
-
-        // user_id と difficulty が一致するスコアを取得
-        const { data: records, error } = await supabase
-            .from('scores')
-            .select('name, score, created_at')
-            .eq('user_id', userId) 
-            .eq('difficulty', difficulty) // ★ここで難易度フィルタリング
-            .order('score', { ascending: false })
-            .limit(10);
-        
+        const { data: records, error } = await supabase.from('scores').select('name, score, created_at').eq('user_id', userId).eq('difficulty', difficulty).order('score', { ascending: false }).limit(10);
         if (!error) {
             socket.emit('ranking_data', records);
         } else {

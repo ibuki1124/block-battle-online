@@ -137,6 +137,49 @@ socket.on('join_success', (roomId, mode) => {
 
 socket.on('join_full', () => { document.getElementById('error-msg').innerText = "満員です！"; });
 
+// ▼▼▼ ルーム一覧の更新処理 (モーダル対応版) ▼▼▼
+socket.on('update_room_list', (rooms) => {
+    const btn = document.getElementById('btn-room-list');
+    const badge = document.getElementById('room-count-badge');
+    const list = document.getElementById('room-list');
+    
+    list.innerHTML = ''; // リストをリセット
+
+    if (rooms.length === 0) {
+        // 部屋がない場合、ボタンを隠す
+        if(btn) btn.style.display = 'none';
+        return;
+    }
+
+    // 部屋がある場合
+    if(btn) btn.style.display = 'block'; // ボタンを表示
+    if(badge) badge.innerText = rooms.length; // 件数を更新
+
+    rooms.forEach(roomId => {
+        const roomBtn = document.createElement('button');
+        roomBtn.className = 'room-item-btn';
+        roomBtn.innerHTML = `<span><i class="fas fa-hashtag"></i> ${escapeHtml(roomId)}</span> <span style="font-size:0.8rem; color:#888;">待機中</span>`;
+        // クリックしたらIDを入力して入室し、モーダルを閉じる
+        roomBtn.onclick = () => {
+            document.getElementById('room-input').value = roomId;
+            toggleRoomList(); // モーダル閉じる
+            joinRoom();
+        };
+        list.appendChild(roomBtn);
+    });
+});
+
+// モーダル開閉関数
+function toggleRoomList() {
+    const modal = document.getElementById('room-list-modal');
+    if (modal.style.display === 'flex') {
+        modal.style.display = 'none';
+    } else {
+        modal.style.display = 'flex';
+    }
+}
+// ▲▲▲ ここまで ▲▲▲
+
 socket.on('game_start', () => {
     document.getElementById('result-overlay').style.display = 'none';
     document.getElementById('retry-btn').style.display = 'inline-block';
