@@ -39,72 +39,81 @@ body {
     cursor: pointer; 
 }
 
-/* PC用ボタンエリア */
-.header-btns { display: flex; gap: 10px; }
+/* ▼▼▼ メニュー（ハンバーガー式に統一） ▼▼▼ */
 
-.nav-btn {
-    background: transparent; border: 1px solid var(--text-sub); color: var(--text-sub);
-    padding: 5px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; width: auto !important; 
-}
-.nav-btn:hover { border-color: var(--text-main); color: var(--text-main); }
-
-.nav-btn.help-btn { border-color: var(--accent); color: var(--accent); }
-.nav-btn.help-btn:hover { background: rgba(78, 204, 163, 0.2); }
-
-.nav-btn.rank-btn { border-color: var(--secondary); color: var(--secondary); }
-.nav-btn.rank-btn:hover { background: rgba(255, 204, 0, 0.2); }
-
-/* ログインボタン（スタイル統合） */
-.nav-btn.auth-btn { border-color: #aaa; color: #fff; }
-.nav-btn.auth-btn:hover { background: rgba(255, 255, 255, 0.1); }
-
-
-/* ▼▼▼ スマホ用メニュー（デフォルトは非表示） ▼▼▼ */
-.mobile-only { display: none; }
-.mobile-menu-list { display: none; }
-
-/* スマホ用ハンバーガーボタン */
+/* ハンバーガーボタン (PC・スマホ共通で表示) */
 .mobile-menu-btn {
-    font-size: 2rem;
+    font-size: 1.5rem;
     cursor: pointer;
-    color: var(--text-main);
-    padding: 0 10px;
-    display: none; /* PCでは非表示 */
-    align-items: center; 
-    height: 100%;
-    line-height: 1;
+    color: #fff;
+    padding: 10px;
+    z-index: 2100; /* メニューより手前に */
+    display: block !important; /* 常時表示 */
 }
 
-/* 開いたときのメニューリスト */
-.mobile-menu-list.active {
-    display: flex;
+/* ドロワーメニューリスト */
+.mobile-menu-list {
+    display: flex !important; /* 常にFlexとして存在させる */
     flex-direction: column;
-    position: absolute;
-    top: 60px; /* ヘッダーの高さ分ずらす */
-    right: 0;
-    width: 250px;
-    background: rgba(26, 26, 46, 0.95);
-    border-bottom-left-radius: 10px;
-    box-shadow: -5px 5px 15px rgba(0,0,0,0.5);
-    border: 1px solid #333;
-    border-top: none;
+    align-items: center;
+    gap: 15px;
+    
+    position: fixed;
+    top: 0;
+    right: -320px; /* 画面外(右)に隠しておく */
+    width: 280px;
+    height: 100vh;
+    
+    background: rgba(10, 10, 18, 0.95); /* 背景色 */
+    backdrop-filter: blur(10px); /* すりガラス効果 */
+    border-left: 1px solid #333;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+    
+    padding-top: 80px; /* 上部の余白 */
+    padding-bottom: 40px;
+    transition: right 0.3s cubic-bezier(0.25, 1, 0.5, 1); /* スムーズなスライド */
     z-index: 2000;
+    overflow-y: auto; /* 内容が多いときはスクロール */
+}
+
+/* アクティブ(開いた)状態 */
+.mobile-menu-list.active {
+    right: 0 !important; /* 画面内に出現 */
 }
 
 .menu-item {
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid #333;
+    width: 80%;
+    text-align: center;
+    padding: 12px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid transparent;
     color: #fff;
-    padding: 15px;
-    text-align: left;
-    font-size: 1rem;
     cursor: pointer;
+    transition: all 0.2s;
 }
-.menu-item:hover { background: rgba(255,255,255,0.1); }
-.menu-item.danger { color: #ff8888; } 
-.menu-item.close { text-align: center; color: #888; font-size: 0.9rem; border-bottom: none; }
 
+.menu-item:hover {
+    background: rgba(78, 204, 163, 0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.menu-item.danger { color: #ff8888; } 
+.menu-item.close { text-align: center; color: #888; font-size: 0.9rem; border: none; background: transparent; }
+.menu-item.close:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: transparent; }
+
+/* ユーザー情報エリア（ドロワー内） */
+#mobile-user-info {
+    width: 80%;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #333 !important;
+    background: transparent !important;
+    color: #fff;
+    font-size: 1rem;
+}
 
 /* ▼▼▼ 入室画面 ▼▼▼ */
 #join-screen { 
@@ -130,12 +139,11 @@ body {
     border-color: var(--accent);
 }
 
-/* モバイルコントローラーの列調整（ボタンが4つになるので調整） */
-/* 既存の .control-row 定義を少し調整してボタンが収まるようにします */
+/* モバイルコントローラーの列調整 */
 .control-row { 
     display: flex; 
     justify-content: center; 
-    gap: 10px; /* 少し狭める */
+    gap: 10px; 
     width: 100%; 
 }
 h1 { margin: 0; font-size: 2.5rem; }
@@ -283,8 +291,6 @@ body:not(.solo-mode) #level-box-vs { display: block; }
     position: fixed; bottom: 15px; left: 0; z-index: 50; 
 }
 
-.control-row { display: flex; justify-content: center; gap: 12px; width: 100%; }
-
 .control-btn {
     width: 55px; height: 55px; border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
@@ -381,11 +387,6 @@ body:not(.solo-mode) #level-box-vs { display: block; }
 .rule-section h3 { color: var(--secondary); margin-bottom: 10px; font-size: 1.1rem; }
 .rule-section ul { list-style: none; padding-left: 10px; color: #ddd; font-size: 0.95rem; line-height: 1.6; }
 .rule-section li { margin-bottom: 5px; }
-
-@media (max-width: 768px) {
-.pc-only { display: none; } /* PC用ボタン非表示 */
-.mobile-menu-btn { display: flex; } /* メニュー表示 */
-}
 
 /* ▼▼▼ レスポンシブ設定 (ブレークポイントを1024pxに変更) ▼▼▼ */
 @media (max-width: 1024px) {
@@ -580,10 +581,6 @@ body:not(.solo-mode) #level-box-vs { display: block; }
     /* 1. PC用の操作ガイドを強制非表示 */
     .controls-guide { display: none !important; }
 
-    /* 2. PC用のヘッダーボタンを隠し、モバイルメニューを出す */
-    .pc-only { display: none !important; }
-    .mobile-menu-btn { display: flex !important; }
-
     /* 3. コントローラーエリアを強制表示（スタイルはグローバル定義を参照） */
     #mobile-controls {
         display: flex !important;
@@ -673,6 +670,7 @@ body:not(.solo-mode) #level-box-vs { display: block; }
     border-radius: 8px;
     cursor: pointer;
     font-size: 1rem;
+    width: 100%;
     text-align: left;
     transition: all 0.2s;
     display: flex;

@@ -12,30 +12,7 @@
     <header id="main-header">
         <div class="logo" onclick="backToTop()">Block Battle Online</div>
         
-        <div class="header-btns pc-only">
-            <button id="btn-login" onclick="toggleLogin()" class="nav-btn auth-btn">
-                <i class="fas fa-sign-in-alt"></i> <span class="btn-text">ログイン</span>
-            </button>
-            
-            <div id="user-info" style="display:none; align-items:center; gap:10px;">
-                <span id="user-name-display" style="color:var(--accent); font-weight:bold;"></span>
-                <button onclick="logout()" class="nav-btn" style="font-size:0.8rem;"><i class="fas fa-sign-out-alt"></i> ログアウト</button>
-            </div>
-            <button onclick="toggleHistory();" class="menu-item">
-                <i class="fas fa-history"></i> 対戦履歴
-            </button>
-            <button onclick="toggleRanking()" class="nav-btn rank-btn">
-                <i class="fas fa-trophy"></i> <span class="btn-text">ランキング</span>
-            </button>
-            <button onclick="toggleRules()" class="nav-btn help-btn">
-                <i class="fas fa-question"></i> <span class="btn-text">ルール</span>
-            </button>
-            <button onclick="backToTop()" class="nav-btn">
-                <i class="fas fa-home"></i> <span class="btn-text">トップ</span>
-            </button>
-        </div>
-
-        <div class="mobile-menu-btn mobile-only" onclick="toggleMobileMenu()">
+        <div class="mobile-menu-btn" onclick="toggleMobileMenu()">
             <i class="fas fa-bars"></i>
         </div>
 
@@ -43,23 +20,28 @@
             <button id="btn-login-mobile" onclick="toggleLogin(); toggleMobileMenu()" class="menu-item">
                 <i class="fas fa-sign-in-alt"></i> ログイン / 登録
             </button>
+            
             <button onclick="toggleHistory(); toggleMobileMenu()" class="menu-item">
                 <i class="fas fa-history"></i> 対戦履歴
             </button>
+            
             <button onclick="toggleRanking(); toggleMobileMenu()" class="menu-item">
                 <i class="fas fa-trophy"></i> ランキングを見る
             </button>
+            
             <button onclick="toggleRules(); toggleMobileMenu()" class="menu-item">
                 <i class="fas fa-question"></i> ルールを確認
             </button>
-            <button onclick="backToTop()" class="menu-item danger">
+            
+            <button onclick="backToTop()" class="menu-item danger" style="margin-top:auto;">
                 <i class="fas fa-home"></i> トップページへ戻る
             </button>
-            <button onclick="toggleMobileMenu()" class="menu-item close">
+            
+            <button onclick="toggleMobileMenu()" class="menu-item close" style="background:#333; margin-top:10px;">
                 × 閉じる
             </button>
         </div>
-    </header>
+        </header>
 
     <div id="join-screen">
         <h1 style="font-size: x-large;">Block Battle Online</h1>
