@@ -76,7 +76,10 @@
 
         <div class="input-group" style="margin-bottom: 10px;">
             <div style="display:flex; gap:5px;">
-                <input type="number" id="room-input" placeholder="部屋ID (6桁)" autocomplete="off" style="letter-spacing: 2px; font-weight: bold;">
+                <input type="text" id="room-input" placeholder="部屋ID" 
+                    maxlength="6" inputmode="numeric" autocomplete="off"
+                    oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6)"
+                    style="letter-spacing: 2px; font-weight: bold;">
                 <button onclick="joinRoom()" class="secondary-btn" style="width: 40%; background: var(--secondary); color:#000;">参加</button>
             </div>
         </div>

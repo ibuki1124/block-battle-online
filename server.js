@@ -18,21 +18,33 @@ app.use(express.static('public'));
 const roomRestartState = {};
 const playerNames = {}; 
 
-// ルーム一覧配信
+// ▼▼▼ 修正: ルーム一覧配信 (作成者名も含めるように変更) ▼▼▼
 function notifyRoomList() {
     const rooms = io.sockets.adapter.rooms;
     const waitingRooms = [];
 
     rooms.forEach((members, roomId) => {
+        // 1. ソロモードの部屋は除外
         if (roomId.startsWith('__solo_')) return;
+        // 2. ソケットID個別の部屋（デフォルト部屋）は除外
         if (io.sockets.sockets.has(roomId)) return;
+        // 3. 人数が1人の部屋だけを「待機中」としてリストアップ
         if (members.size === 1) {
-            waitingRooms.push(roomId);
+            // 部屋にいる唯一のメンバー(作成者)のSocket IDを取得
+            const creatorSocketId = [...members][0];
+            // 保存されている名前を取得 (なければ Guest)
+            const creatorName = playerNames[creatorSocketId] || 'Guest';
+            // IDと名前をオブジェクトとして追加
+            waitingRooms.push({
+                id: roomId,
+                creator: creatorName
+            });
         }
     });
 
     io.emit('update_room_list', waitingRooms);
 }
+// ▲▲▲ ここまで ▲▲▲
 
 // ▼▼▼ 追加: 6桁のランダムな部屋IDを生成する関数 ▼▼▼
 function generateRoomId() {

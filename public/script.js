@@ -157,7 +157,7 @@ socket.on('join_error', (msg) => {
 });
 // ▲▲▲ ここまで ▲▲▲
 
-// ▼▼▼ ルーム一覧の更新処理 (モーダル対応版) ▼▼▼
+// ▼▼▼ 修正: ルーム一覧の更新処理 (作成者名表示に対応) ▼▼▼
 socket.on('update_room_list', (rooms) => {
     const btn = document.getElementById('btn-room-list');
     const badge = document.getElementById('room-count-badge');
@@ -166,28 +166,35 @@ socket.on('update_room_list', (rooms) => {
     list.innerHTML = ''; // リストをリセット
 
     if (rooms.length === 0) {
-        // 部屋がない場合、ボタンを隠す
         if(btn) btn.style.display = 'none';
         return;
     }
 
-    // 部屋がある場合
-    if(btn) btn.style.display = 'block'; // ボタンを表示
-    if(badge) badge.innerText = rooms.length; // 件数を更新
+    if(btn) btn.style.display = 'block'; 
+    if(badge) badge.innerText = rooms.length; 
 
-    rooms.forEach(roomId => {
+    // rooms は [{ id: '123456', creator: 'ユーザー名' }, ...] の配列
+    rooms.forEach(room => {
         const roomBtn = document.createElement('button');
         roomBtn.className = 'room-item-btn';
-        roomBtn.innerHTML = `<span><i class="fas fa-hashtag"></i> ${escapeHtml(roomId)}</span> <span style="font-size:0.8rem; color:#888;">待機中</span>`;
-        // クリックしたらIDを入力して入室し、モーダルを閉じる
+        // ▼▼▼ 修正: IDの右側に作成者名を表示 ▼▼▼
+        roomBtn.innerHTML = `
+            <span><i class="fas fa-hashtag"></i> ${escapeHtml(room.id)}</span>
+            <span style="font-size:0.85rem; color:#aaa; margin-left: auto;">
+                <i class="fas fa-user"></i> ${escapeHtml(room.creator)}
+            </span>
+        `;
+        // ▲▲▲ ここまで ▲▲▲
         roomBtn.onclick = () => {
-            document.getElementById('room-input').value = roomId;
-            toggleRoomList(); // モーダル閉じる
+            document.getElementById('room-input').value = room.id;
+            toggleRoomList(); 
             joinRoom();
         };
+        
         list.appendChild(roomBtn);
     });
 });
+// ▲▲▲ ここまで ▲▲▲
 
 // モーダル開閉関数
 function toggleRoomList() {
