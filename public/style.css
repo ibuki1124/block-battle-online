@@ -673,7 +673,6 @@ body:not(.solo-mode) #level-box-vs { display: block; }
     border-radius: 8px;
     cursor: pointer;
     font-size: 1rem;
-    width: 100%;
     text-align: left;
     transition: all 0.2s;
     display: flex;
@@ -696,4 +695,64 @@ body:not(.solo-mode) #level-box-vs { display: block; }
     border-radius: 10px;
     margin-left: 5px;
     font-weight: bold;
+}
+
+/* 履歴の名前リンク */
+.clickable-name {
+    cursor: pointer;
+    text-decoration: underline;
+    color: #fff;
+    transition: color 0.2s;
+}
+.clickable-name:hover {
+    color: var(--secondary);
+}
+
+/* ▼▼▼ 対戦成績詳細モーダル ▼▼▼ */
+.stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px 25px;
+    border-radius: 10px;
+    min-width: 80px;
+    border: 2px solid transparent;
+}
+.stat-card.win { border-color: var(--accent); color: var(--accent); }
+.stat-card.lose { border-color: #ff4444; color: #ff4444; }
+
+.stat-big-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    font-family: monospace;
+}
+
+#history-list, 
+#vs-history-list {
+    display: flex !important;
+    flex-direction: column !important; /* 縦方向に積む */
+    flex-wrap: nowrap !important;      /* 折り返さない */
+    justify-content: flex-start !important;
+    align-items: stretch !important;   /* 横幅いっぱいに広げる */
+    gap: 8px !important;               /* アイテム間の隙間 */
+}
+
+/* 個々のアイテムのスタイル調整 */
+.history-item {
+    cursor: default !important; /* 行全体はクリック不可に見せる */
+    width: auto !important;            /* 親要素に合わせて広げる */
+    margin: 0 !important;              /* 余計なマージン削除 */
+    flex-shrink: 0 !important;         /* 潰れないようにする */
+}
+
+/* ▼▼▼ 勝敗バーのパーセント表示用 ▼▼▼ */
+#bar-win, #bar-lose {
+    display: flex;             /* 文字を中央に配置するため */
+    align-items: center;       /* 上下中央 */
+    justify-content: center;   /* 左右中央 */
+    color: #fff;               /* 文字色 白 */
+    font-size: 0.75rem;        /* 少し小さめ */
+    font-weight: bold;         /* 太字 */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5); /* 読みやすく影をつける */
+    transition: width 0.5s ease; /* バーの動きを滑らかに */
+    white-space: nowrap;       /* 文字の折り返し禁止 */
+    overflow: hidden;          /* はみ出た文字は隠す */
 }

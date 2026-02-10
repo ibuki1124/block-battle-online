@@ -159,9 +159,39 @@ io.on('connection', (socket) => {
         socket.broadcast.to(data.roomId).emit('receive_attack', data.lines);
     });
 
-    socket.on('player_gameover', (roomId) => {
+    // ▼▼▼ 修正: 勝敗判定とDB保存処理 (ID保存に対応) ▼▼▼
+    socket.on('player_gameover', async (roomId) => {
         socket.broadcast.to(roomId).emit('opponent_won');
+        const room = io.sockets.adapter.rooms.get(roomId);
+        if (room && room.size === 2) {
+            const loserSocketId = socket.id;
+            const winnerSocketId = [...room].find(id => id !== loserSocketId);
+            if (!winnerSocketId) return;
+            const loserName = playerNames[loserSocketId];
+            const winnerName = playerNames[winnerSocketId];
+            const loserUserId = playerUserIds[loserSocketId];
+            const winnerUserId = playerUserIds[winnerSocketId];
+            // 敗者の記録 (相手=勝者)
+            if (loserUserId) {
+                await supabase.from('match_history').insert([{
+                    user_id: loserUserId,
+                    opponent_name: winnerName || 'Guest',
+                    opponent_id: winnerUserId || null, // ★追加: 相手のID
+                    result: 'LOSE'
+                }]);
+            }
+            // 勝者の記録 (相手=敗者)
+            if (winnerUserId) {
+                await supabase.from('match_history').insert([{
+                    user_id: winnerUserId,
+                    opponent_name: loserName || 'Guest',
+                    opponent_id: loserUserId || null, // ★追加: 相手のID
+                    result: 'WIN'
+                }]);
+            }
+        }
     });
+    // ▲▲▲ ここまで ▲▲▲
 
     socket.on('restart_request', (roomId) => {
         if (roomId.startsWith('__solo_')) {
@@ -187,6 +217,72 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ▼▼▼ 追加: 対戦履歴の取得リクエスト ▼▼▼
+    socket.on('request_match_history', async (userId) => {
+        if (!userId) return;
+        // 1. まず履歴データを取得
+        const { data: historyData, error } = await supabase
+            .from('match_history')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+        if (error) {
+            console.error('History fetch error:', error);
+            return;
+        }
+        // 2. 履歴に含まれる「対戦相手のID」をリストアップ (重複排除)
+        const opponentIds = [...new Set(historyData.map(h => h.opponent_id).filter(id => id))];
+        if (opponentIds.length > 0) {
+            // 3. scoresテーブルから、それらのIDを持つユーザーの最新の名前を取得
+            // (名前変更時にscoresも更新されている前提を利用)
+            const { data: latestNames } = await supabase
+                .from('scores')
+                .select('user_id, name')
+                .in('user_id', opponentIds)
+                .order('created_at', { ascending: false }); // 新しい順
+            // 4. IDと名前のマップを作成 (同じIDで複数ある場合は最初=最新を採用)
+            const nameMap = {};
+            if (latestNames) {
+                latestNames.forEach(record => {
+                    if (!nameMap[record.user_id]) {
+                        nameMap[record.user_id] = record.name;
+                    }
+                });
+            }
+            // 5. 履歴データの名前を最新のものに上書き
+            historyData.forEach(h => {
+                if (h.opponent_id && nameMap[h.opponent_id]) {
+                    h.opponent_name = nameMap[h.opponent_id];
+                }
+            });
+        }
+        socket.emit('match_history_data', historyData);
+    });
+    // ▲▲▲ ここまで ▲▲▲
+    // ▼▼▼ 追加: 特定ユーザーとの対戦成績を取得 ▼▼▼
+    socket.on('request_vs_stats', async (data) => {
+        const { myId, opponentId } = data;
+        if (!myId || !opponentId) return;
+        // その相手との全対戦履歴を取得 (作成日時順)
+        const { data: history, error } = await supabase
+            .from('match_history')
+            .select('*')
+            .eq('user_id', myId)
+            .eq('opponent_id', opponentId)
+            .order('created_at', { ascending: false });
+        if (!error && history) {
+            const wins = history.filter(h => h.result === 'WIN').length;
+            const losses = history.filter(h => h.result === 'LOSE').length;
+            socket.emit('vs_stats_result', {
+                wins,
+                losses,
+                opponentId,
+                history // ★追加: 履歴リストそのものもクライアントへ送る
+            });
+        }
+    });
+    // ▲▲▲ ここまで ▲▲▲
     // ▼▼▼ ランキング機能 (修正: 名前優先処理込み) ▼▼▼
     socket.on('submit_score', async (data) => {
         const name = data.name || playerNames[socket.id] || 'Guest';

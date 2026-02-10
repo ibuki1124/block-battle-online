@@ -221,6 +221,152 @@ function toggleRoomList() {
 }
 // ▲▲▲ ここまで ▲▲▲
 
+// ▼▼▼ 追加: 対戦履歴モーダルの制御と表示 ▼▼▼
+function toggleHistory() {
+    const modal = document.getElementById('history-modal');
+    if (!modal) return;
+    if (modal.style.display === 'flex') {
+        modal.style.display = 'none';
+    } else {
+        // ログインチェック
+        if (!currentUser) {
+            alert("履歴を見るにはログインしてください");
+            toggleLogin();
+            return;
+        }
+        modal.style.display = 'flex';
+        document.getElementById('history-loading').style.display = 'block';
+        document.getElementById('history-list').style.display = 'none';
+        document.getElementById('history-error').style.display = 'none';
+        // サーバーへ履歴データを要求
+        socket.emit('request_match_history', currentUser.id);
+    }
+}
+
+// ▼▼▼ 履歴データの受信・表示処理 (詳細機能追加) ▼▼▼
+socket.on('match_history_data', (history) => {
+    const loading = document.getElementById('history-loading');
+    const list = document.getElementById('history-list');
+    const error = document.getElementById('history-error');
+    loading.style.display = 'none';
+    list.innerHTML = '';
+    if (!history || history.length === 0) {
+        error.style.display = 'block';
+        error.innerText = "まだ対戦履歴がありません";
+        return;
+    }
+    list.style.display = 'block';
+    history.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'room-item-btn history-item';
+        div.style.background = item.result === 'WIN' ? 'rgba(78, 204, 163, 0.1)' : 'rgba(255, 68, 68, 0.1)';
+        div.style.borderColor = item.result === 'WIN' ? '#4ecca3' : '#ff4444';
+        const date = new Date(item.created_at).toLocaleString([], {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const nameHtml = item.opponent_id 
+            ? `<span class="clickable-name" onclick="showVsStats('${item.opponent_id}', '${escapeHtml(item.opponent_name)}')"> ${escapeHtml(item.opponent_name)} </span>` 
+            : `<span>${escapeHtml(item.opponent_name)}</span>`;
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div style="text-align:left; flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; margin-right:10px;">
+                    <span style="font-weight:bold; font-size:1.2rem; color:${item.result === 'WIN' ? '#4ecca3' : '#ff4444'}">${item.result}</span>
+                    <span style="margin-left:8px; font-size:0.95rem;">vs ${nameHtml}</span>
+                </div>
+                <div style="font-size:0.75rem; color:#aaa; white-space:nowrap;">${date}</div>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+});
+
+// 通算成績をリクエストする関数
+window.showVsStats = function(opponentId, opponentName) {
+    if (!currentUser) return;
+    // 名前を保持してサーバーへリクエスト
+    window.currentCheckingOpponentName = opponentName;
+    socket.emit('request_vs_stats', { 
+        myId: currentUser.id, 
+        opponentId: opponentId 
+    });
+};
+// 通算成績の受信・表示
+socket.on('vs_stats_result', (data) => {
+    const name = window.currentCheckingOpponentName || '相手';
+    const wins = data.wins;
+    const losses = data.losses;
+    const total = wins + losses;
+    // 要素取得
+    const modal = document.getElementById('vs-stats-modal');
+    const title = document.getElementById('vs-stats-title');
+    const winEl = document.getElementById('vs-stats-win');
+    const loseEl = document.getElementById('vs-stats-lose');
+    const barWin = document.getElementById('bar-win');
+    const barLose = document.getElementById('bar-lose');
+    const list = document.getElementById('vs-history-list');
+    // 数値セット
+    title.innerText = `${escapeHtml(name)} との戦績`;
+    winEl.innerText = wins;
+    loseEl.innerText = losses;
+    // バーの幅とパーセント文字の設定
+    if (total > 0) {
+        // パーセント計算 (四捨五入)
+        const winPct = Math.round((wins / total) * 100);
+        const losePct = 100 - winPct;
+        barWin.style.width = `${winPct}%`;
+        barLose.style.width = `${losePct}%`;
+        // 幅が狭すぎる(15%未満)ときは文字を隠す（見づらいため）
+        barWin.innerText = winPct >= 15 ? `${winPct}%` : '';
+        barLose.innerText = losePct >= 15 ? `${losePct}%` : '';
+    } else {
+        // データがない場合
+        barWin.style.width = '50%';
+        barLose.style.width = '50%';
+        barWin.innerText = '';
+        barLose.innerText = '';
+    }
+    // 詳細リストの生成 (ここは変更なし)
+    list.innerHTML = '';
+    if (data.history && data.history.length > 0) {
+        data.history.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'room-item-btn history-item';
+            div.style.background = item.result === 'WIN' ? 'rgba(78, 204, 163, 0.1)' : 'rgba(255, 68, 68, 0.1)';
+            div.style.borderColor = item.result === 'WIN' ? '#4ecca3' : '#ff4444';
+            div.style.cursor = 'default';
+            const date = new Date(item.created_at).toLocaleString([], {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                    <span style="font-weight:bold; font-size:1.1rem; color:${item.result === 'WIN' ? '#4ecca3' : '#ff4444'}">${item.result}</span>
+                    <span style="font-size:0.8rem; color:#aaa;">${date}</span>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    } else {
+        list.innerHTML = '<p style="text-align:center; color:#666;">詳細データなし</p>';
+    }
+    modal.style.display = 'flex';
+});
+// ▲▲▲ ここまで ▲▲▲
+
+// モーダルを閉じる関数
+window.closeVsStats = function() {
+    const modal = document.getElementById('vs-stats-modal');
+    if (modal) modal.style.display = 'none';
+};
+// ▲▲▲ ここまで ▲▲▲
+
 socket.on('game_start', () => {
     document.getElementById('result-overlay').style.display = 'none';
     document.getElementById('retry-btn').style.display = 'inline-block';
