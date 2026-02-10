@@ -66,23 +66,32 @@
                 <input type="text" id="name-input" placeholder="例: Player1 (最大10文字)" maxlength="10">
                 <button id="btn-save-name" onclick="saveNameFromInput()" class="save-name-btn">変更</button>
             </div>
-
-            <p>部屋ID (対戦用)</p>
-            <input type="text" id="room-input" placeholder="例: room1" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');">
         </div>
 
-        <div class="action-buttons">
-            <button onclick="joinRoom()" class="primary-btn">入室 / 作成</button>
-            <button id="btn-room-list" onclick="toggleRoomList()" class="secondary-btn" style="display:none; background:#333; border:1px solid #555; color: #fff;">
+        <div class="action-buttons" style="margin-bottom: 20px;">
+            <button onclick="createRoom()" class="primary-btn" style="background: linear-gradient(45deg, #4ecca3, #2a9d8f);">
+                ＋ 新規ルーム作成 (ID自動生成)
+            </button>
+        </div>
+
+        <div class="input-group" style="margin-bottom: 10px;">
+            <div style="display:flex; gap:5px;">
+                <input type="number" id="room-input" placeholder="部屋ID (6桁)" autocomplete="off" style="letter-spacing: 2px; font-weight: bold;">
+                <button onclick="joinRoom()" class="secondary-btn" style="width: 40%; background: var(--secondary); color:#000;">参加</button>
+            </div>
+        </div>
+
+        <div class="action-buttons" style="margin-bottom: 20px;">
+            <button id="btn-room-list" onclick="toggleRoomList()" class="secondary-btn" style="display:none; background:#333; border:1px solid #555; color:#fff;">
                 <i class="fas fa-users"></i> 待機中の部屋を見る <span id="room-count-badge" class="badge">0</span>
             </button>
         </div>
         <p style="margin-top:20px;">1人用モード選択</p>
         <div class="difficulty-wrapper" style="margin-bottom: 15px;">
             <select id="difficulty-select">
-                <option value="easy">Easy（速度一定）</option>
-                <option value="normal" selected>Normal（速度上昇・対戦モードと同じ）</option>
-                <option value="hard">Hard（速度上昇＋お邪魔機能）</option>
+                <option value="easy">易（速度一定）</option>
+                <option value="normal" selected>標準（速度上昇・対戦モードと同じ）</option>
+                <option value="hard">難（速度上昇＋お邪魔機能）</option>
             </select>
         </div>
 

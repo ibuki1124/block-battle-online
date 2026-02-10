@@ -67,16 +67,27 @@ gameTimerWorker.onmessage = function(e) {
     if (e.data === 'tick') update(Date.now());
 };
 
-// --- 通信部分 ---
+// ▼▼▼ 追加: 新規ルーム作成処理 ▼▼▼
+function createRoom() {
+    const playerName = document.getElementById('name-input').value;
+    currentDifficulty = 'normal'; // 対戦はNormal固定
+    socket.emit('create_room', playerName);
+}
+// ▲▲▲ ここまで ▲▲▲
+
+// ▼▼▼ 修正: 既存ルームへの参加処理 ▼▼▼
 function joinRoom() {
     const roomId = document.getElementById('room-input').value;
     const playerName = document.getElementById('name-input').value;
     if (roomId) {
         myRoomId = roomId;
-        currentDifficulty = 'normal'; // 対戦はNormal固定
+        currentDifficulty = 'normal';
         socket.emit('join_game', roomId, playerName);
-    } else alert("部屋IDを入力してください");
+    } else {
+        document.getElementById('error-msg').innerText = "部屋IDを入力してください";
+    }
 }
+// ▲▲▲ ここまで ▲▲▲
 
 function startPractice() {
     const playerName = document.getElementById('name-input').value;
@@ -136,6 +147,15 @@ socket.on('join_success', (roomId, mode) => {
 });
 
 socket.on('join_full', () => { document.getElementById('error-msg').innerText = "満員です！"; });
+
+// ▼▼▼ 追加: 部屋が存在しない場合のエラー処理 ▼▼▼
+socket.on('join_error', (msg) => {
+    const errorEl = document.getElementById('error-msg');
+    errorEl.innerText = msg;
+    // 3秒後にメッセージを消す
+    setTimeout(() => { errorEl.innerText = ""; }, 3000);
+});
+// ▲▲▲ ここまで ▲▲▲
 
 // ▼▼▼ ルーム一覧の更新処理 (モーダル対応版) ▼▼▼
 socket.on('update_room_list', (rooms) => {

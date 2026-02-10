@@ -18,38 +18,68 @@ app.use(express.static('public'));
 const roomRestartState = {};
 const playerNames = {}; 
 
-// ▼▼▼ 追加: ルーム一覧を配信する関数 ▼▼▼
+// ルーム一覧配信
 function notifyRoomList() {
     const rooms = io.sockets.adapter.rooms;
     const waitingRooms = [];
 
     rooms.forEach((members, roomId) => {
-        // 1. ソロモードの部屋は除外
         if (roomId.startsWith('__solo_')) return;
-        // 2. ソケットID個別の部屋（デフォルト部屋）は除外
-        // (io.sockets.sockets.has(roomId) で判定可能)
         if (io.sockets.sockets.has(roomId)) return;
-
-        // 3. 人数が1人の部屋だけを「待機中」としてリストアップ
         if (members.size === 1) {
             waitingRooms.push(roomId);
         }
     });
 
-    // 全員に最新の待機部屋リストを送信
     io.emit('update_room_list', waitingRooms);
+}
+
+// ▼▼▼ 追加: 6桁のランダムな部屋IDを生成する関数 ▼▼▼
+function generateRoomId() {
+    let id;
+    let maxTries = 100;
+    do {
+        // 100000 ～ 999999 の乱数を生成
+        id = Math.floor(100000 + Math.random() * 900000).toString();
+        maxTries--;
+    } while (io.sockets.adapter.rooms.has(id) && maxTries > 0);
+    return id;
 }
 // ▲▲▲ ここまで ▲▲▲
 
 io.on('connection', (socket) => {
     
-    // 接続時にも最新リストを送る
     notifyRoomList();
 
-    // 入室
+    // ▼▼▼ 追加: 新規ルーム作成（自動ID割り当て） ▼▼▼
+    socket.on('create_room', (playerName) => {
+        const roomId = generateRoomId(); // ID自動生成
+        
+        socket.join(roomId);
+        playerNames[socket.id] = playerName || 'Guest';
+
+        // 作成成功としてクライアントへ通知（join_successを流用）
+        socket.emit('join_success', roomId, 'multi');
+        
+        // 自分の情報を更新
+        io.to(roomId).emit('update_names', [{ id: socket.id, name: playerNames[socket.id] }]);
+        
+        // リスト更新
+        notifyRoomList();
+    });
+    // ▲▲▲ ここまで ▲▲▲
+
+    // ▼▼▼ 変更: 既存ルームへの入室（ID指定） ▼▼▼
     socket.on('join_game', (roomId, playerName) => {
         const room = io.sockets.adapter.rooms.get(roomId);
-        const userCount = room ? room.size : 0;
+        
+        // 部屋が存在しない、またはプライベート部屋ではない（socketIDと同じ）場合はエラー
+        if (!room || io.sockets.sockets.has(roomId)) {
+            socket.emit('join_error', 'その部屋IDは見つかりません');
+            return;
+        }
+
+        const userCount = room.size;
 
         if (userCount < 2) {
             socket.join(roomId);
@@ -70,13 +100,12 @@ io.on('connection', (socket) => {
                 io.to(roomId).emit('game_start');
             }
             
-            // ▼▼▼ 追加: 部屋状況が変わったのでリスト更新通知 ▼▼▼
             notifyRoomList(); 
-            // ▲▲▲
         } else {
             socket.emit('join_full');
         }
     });
+    // ▲▲▲ ここまで ▲▲▲
 
     socket.on('join_practice', (playerName) => {
         const roomId = `__solo_${socket.id}`; 
@@ -85,7 +114,6 @@ io.on('connection', (socket) => {
         socket.emit('join_success', roomId, 'solo');
         socket.emit('update_names', [{ id: socket.id, name: playerNames[socket.id] }]);
         socket.emit('game_start');
-        // ソロ部屋はリストに載らないので notifyRoomList は不要
     });
 
     socket.on('disconnecting', () => {
@@ -97,11 +125,9 @@ io.on('connection', (socket) => {
                 socket.to(roomId).emit('opponent_left');
             }
         }
-        // ▼▼▼ 追加: 退出直前の状態ではまだadapterに残っているため、少し待つか、disconnectで処理 ▼▼▼
     });
 
     socket.on('disconnect', () => {
-        // ▼▼▼ 追加: 完全に切断された後にリスト更新 ▼▼▼
         notifyRoomList();
     });
 
@@ -131,26 +157,24 @@ io.on('connection', (socket) => {
         if (currentMemberCount < 2) {
             socket.emit('reset_waiting');
             roomRestartState[roomId].clear();
-            
-            // ▼▼▼ 追加: リセット時に待機状態に戻るのでリスト更新 ▼▼▼
             notifyRoomList();
             return;
         }
         if (roomRestartState[roomId].size >= currentMemberCount) {
             io.to(roomId).emit('game_start');
             roomRestartState[roomId].clear(); 
-            // ▼▼▼ 追加: ゲーム開始（満員）なのでリスト更新 ▼▼▼
             notifyRoomList();
         }
     });
 
-    // ▼▼▼ ランキング機能 ▼▼▼
-    // (変更なし)
+    // ▼▼▼ ランキング機能 (修正: 名前優先処理込み) ▼▼▼
     socket.on('submit_score', async (data) => {
         const name = data.name || playerNames[socket.id] || 'Guest';
+        
         const score = data.score;
         const userId = data.userId;
         const difficulty = data.difficulty || 'normal';
+
         if (!userId) return; 
         const { error } = await supabase.from('scores').insert([{ name: name, score: score, user_id: userId, difficulty: difficulty }]);
         if (error) console.error('Score save error:', error);
