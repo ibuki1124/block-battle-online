@@ -429,6 +429,7 @@ socket.on('receive_attack', (lines) => {
 // --- ゲームエンジン ---
 function initGame() {
     stopGameLoop(); 
+    document.body.classList.add('game-active'); // 追加
 
     board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     
@@ -926,7 +927,10 @@ setupMobileControls();
 socket.on('opponent_board', (data) => {
     drawOpponent(data.board, data.current);
 });
-function backToTop() { window.location.reload(); }
+function backToTop() {
+    document.body.classList.remove('game-active'); // 追加
+    window.location.reload(); 
+}
 function toggleRules() { const m = document.getElementById('rules-modal'); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
 
 function toggleRanking() { 
