@@ -360,6 +360,9 @@ body:not(.solo-mode) #level-box-vs { display: block; }
     border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
     color: #fff; font-size: 1.4rem;
     display: flex; justify-content: center; align-items: center;
+    /* ▼▼▼ 追加: ブラウザのスクロール・ズームを無効化 ▼▼▼ */
+    touch-action: none; 
+    /* ▲▲▲ ここまで ▲▲▲ */
     -webkit-tap-highlight-color: transparent; touch-action: none;
 }
 .control-btn:active { background: rgba(255,255,255,0.3); }
@@ -670,4 +673,63 @@ body:not(.solo-mode) #level-box-vs { display: block; }
     color: #fff; font-size: 0.75rem; font-weight: bold;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
     transition: width 0.5s ease; white-space: nowrap; overflow: hidden;
+}
+
+/* ▼▼▼ ソーシャルログインボタン ▼▼▼ */
+.social-login-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.social-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.2s;
+}
+.social-btn:hover {
+    opacity: 0.8;
+}
+
+/* Googleボタンの色 (白背景・黒文字) */
+.social-btn.google {
+    background: #fff;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+/* LINEボタンの色 (LINEグリーン・白文字) */
+.social-btn.line {
+    background: #06C755;
+    color: #fff;
+    border: 1px solid #06C755;
+}
+
+/* 区切り線 */
+.separator-line {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 20px 0;
+    color: var(--text-sub);
+    font-size: 0.85rem;
+}
+.separator-line::before,
+.separator-line::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #333;
+}
+.separator-line span {
+    padding: 0 10px;
 }

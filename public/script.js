@@ -7,6 +7,154 @@ let currentUser = null;
 let originalName = ""; 
 // ▲▲▲ ここまで ▲▲▼
 
+// ▼▼▼ 追加: Auth0の設定 (LINEログイン用) ▼▼▼
+const AUTH0_DOMAIN = "dev-hi.jp.auth0.com";
+const AUTH0_CLIENT_ID = "rVwP1DwF2tJ5J2QIiAFaJ3j2z2ymEIut";
+let auth0Client = null;
+let isAuth0Initializing = true; // ★重要: Auth0の準備中フラグ
+// ▲▲▲ ここまで ▲▲▲
+
+// ▼▼▼ Auth0初期化とLINEログイン判定 ▼▼▼
+async function initAuth0() {
+    console.log("[DEBUG] initAuth0: 開始");
+    try {
+        auth0Client = await auth0.createAuth0Client({
+            domain: AUTH0_DOMAIN,
+            clientId: AUTH0_CLIENT_ID,
+            authorizationParams: {
+                redirect_uri: window.location.origin
+            },
+            cacheLocation: 'localstorage'
+        });
+
+        // 1. ログイン後のリダイレクトバック処理
+        if (location.search.includes("state=") && (location.search.includes("code=") || location.search.includes("error="))) {
+            console.log("[DEBUG] initAuth0: リダイレクトバック検知");
+            await auth0Client.handleRedirectCallback();
+            window.history.replaceState({}, document.title, "/");
+        }
+
+        // 2. ログイン済みかチェック
+        const isAuthenticated = await auth0Client.isAuthenticated();
+        if (isAuthenticated) {
+            const user = await auth0Client.getUser();
+            const token = await auth0Client.getTokenSilently();
+            console.log("[DEBUG] initAuth0: Auth0ログイン済み", user);
+
+            // Supabase連携
+            supabaseClient.realtime.setAuth(token);
+            supabaseClient.rest.headers['Authorization'] = `Bearer ${token}`;
+
+            let tempUser = {
+                id: user.sub,
+                email: user.email,
+                user_metadata: {
+                    display_name: user.name || user.nickname || 'Guest'
+                },
+                provider: 'auth0'
+            };
+            
+            currentUser = await fetchUserProfile(tempUser);
+            updateUserUI(currentUser);
+        }
+    } catch (e) {
+        console.error("[DEBUG] Auth0 Init Error:", e);
+    } finally {
+        isAuth0Initializing = false;
+        console.log("[DEBUG] initAuth0: 完了 (isAuth0Initializing = false)");
+        
+        // どちらも未ログインの場合のみUIクリア（タイミング調整用）
+        if (!currentUser) {
+            // Supabase側の判定を待つためここでは強制クリアしない
+        }
+    }
+}
+// ページ読み込み時に実行
+initAuth0();
+
+
+// ▼▼▼ UI更新ロジック (デバッグ機能強化版) ▼▼▼
+function updateUserUI(user) {
+    console.log("[DEBUG] updateUserUI 実行: ユーザー =", user ? user.id : "null");
+
+    const pcLoginBtn = document.getElementById('btn-login');
+    const pcUserInfo = document.getElementById('user-info');
+    const pcNameDisplay = document.getElementById('user-name-display');
+    
+    // ▼デバッグ: HTML要素が存在するかチェック
+    if (!pcLoginBtn || !pcUserInfo || !pcNameDisplay) {
+        console.error("[ERROR] HTML要素が見つかりません！index.htmlを確認してください。");
+        console.error("btn-login:", pcLoginBtn, "user-info:", pcUserInfo, "user-name-display:", pcNameDisplay);
+        // HTMLがないとこれ以上処理しても動かないが、モバイル用などは動くかもしれないので続行
+    }
+
+    const mobileMenu = document.getElementById('mobile-menu-list');
+    const mobileLoginBtn = document.getElementById('btn-login-mobile');
+    const nameInput = document.getElementById('name-input');
+    let mobileUserInfo = document.getElementById('mobile-user-info');
+
+    // モバイル用要素の生成
+    if (!mobileUserInfo && mobileMenu) {
+        mobileUserInfo = document.createElement('div'); 
+        mobileUserInfo.id = 'mobile-user-info'; 
+        mobileUserInfo.className = 'menu-item'; 
+        mobileUserInfo.style.borderBottom = '1px solid #333'; 
+        mobileUserInfo.style.cursor = 'default'; 
+        mobileUserInfo.style.backgroundColor = 'rgba(255,255,255,0.05)';
+    }
+
+    if (user) {
+        // ■ ログイン時
+        const displayName = (user.user_metadata && user.user_metadata.display_name) || (user.email ? user.email.split('@')[0] : 'Player');
+        originalName = displayName;
+
+        // PC表示切り替え
+        if(pcLoginBtn) pcLoginBtn.style.display = 'none';
+        if(pcUserInfo) { 
+            pcUserInfo.style.display = 'flex'; 
+            if(pcNameDisplay) pcNameDisplay.innerText = displayName; 
+        }
+
+        // モバイル表示切り替え
+        if(mobileLoginBtn) mobileLoginBtn.style.display = 'none';
+        
+        if(mobileUserInfo && mobileMenu) {
+            mobileUserInfo.innerHTML = `<div style="color:var(--accent); font-weight:bold; margin-bottom:5px;"><i class="fas fa-user"></i> ${escapeHtml(displayName)}</div><button onclick="logout(); toggleMobileMenu();" style="background:#333; border:1px solid #555; color:#ccc; padding:10px; border-radius:4px; cursor:pointer; width:100%; box-sizing: border-box;">ログアウト</button>`;
+            if (!document.getElementById('mobile-user-info')) { 
+                mobileMenu.insertBefore(mobileUserInfo, mobileMenu.firstChild); 
+            }
+        }
+
+        // 名前入力欄の更新
+        if (nameInput) { 
+            nameInput.value = displayName; 
+            nameInput.readOnly = false; 
+            nameInput.style.backgroundColor = "#000"; 
+        }
+
+    } else {
+        // ■ 未ログイン時
+        originalName = "";
+        
+        if(pcLoginBtn) pcLoginBtn.style.display = 'inline-block';
+        if(pcUserInfo) pcUserInfo.style.display = 'none';
+        
+        if(mobileLoginBtn) mobileLoginBtn.style.display = 'block';
+        
+        if (mobileUserInfo && document.getElementById('mobile-user-info')) { 
+            mobileUserInfo.remove(); 
+        }
+        
+        if (nameInput) { 
+            nameInput.value = ""; 
+            nameInput.readOnly = false; 
+            nameInput.style.backgroundColor = "#000"; 
+        }
+    }
+}
+// ▲▲▲ ここまで ▲▲▲
+
+
 const socket = io();
 let myRoomId = null;
 
@@ -67,24 +215,18 @@ gameTimerWorker.onmessage = function(e) {
     if (e.data === 'tick') update(Date.now());
 };
 
-// ▼▼▼ 修正: ログインチェックとUserID送信を追加 ▼▼▼
 function createRoom() {
-    // 1. ログインチェック
     if (!currentUser) {
         alert("対戦ルームを作成するにはログインが必要です。");
         toggleLogin();
         return;
     }
     const playerName = document.getElementById('name-input').value;
-    currentDifficulty = 'normal'; // 対戦はNormal固定
-    // 2. userId (currentUser.id) も一緒に送信
+    currentDifficulty = 'normal'; 
     socket.emit('create_room', playerName, currentUser.id);
 }
-// ▲▲▲ ここまで ▲▲▲
 
-// ▼▼▼ 修正: ログインチェックとUserID送信を追加 ▼▼▼
 function joinRoom() {
-    // 1. ログインチェック
     if (!currentUser) {
         alert("対戦ルームに参加するにはログインが必要です。");
         toggleLogin();
@@ -95,13 +237,11 @@ function joinRoom() {
     if (roomId) {
         myRoomId = roomId;
         currentDifficulty = 'normal'; 
-        // 2. userId (currentUser.id) も一緒に送信
         socket.emit('join_game', roomId, playerName, currentUser.id);
     } else {
         document.getElementById('error-msg').innerText = "部屋IDを入力してください";
     }
 }
-// ▲▲▲ ここまで ▲▲▲
 
 function startPractice() {
     const playerName = document.getElementById('name-input').value;
@@ -132,7 +272,6 @@ socket.on('join_success', (roomId, mode) => {
     document.getElementById('current-room').innerText = roomId;
     
     const pcPauseBtn = document.getElementById('pc-pause-btn');
-    // ▼▼▼ 追加: 対戦時はポーズボタンなどを隠す ▼▼▼
     const mobilePauseBtn = document.getElementById('btn-pause');
     const guidePause = document.getElementById('guide-pause');
 
@@ -162,22 +301,18 @@ socket.on('join_success', (roomId, mode) => {
 
 socket.on('join_full', () => { document.getElementById('error-msg').innerText = "満員です！"; });
 
-// ▼▼▼ 追加: 部屋が存在しない場合のエラー処理 ▼▼▼
 socket.on('join_error', (msg) => {
     const errorEl = document.getElementById('error-msg');
     errorEl.innerText = msg;
-    // 3秒後にメッセージを消す
     setTimeout(() => { errorEl.innerText = ""; }, 3000);
 });
-// ▲▲▲ ここまで ▲▲▲
 
-// ▼▼▼ 修正: ルーム一覧の更新処理 (作成者名表示に対応) ▼▼▼
 socket.on('update_room_list', (rooms) => {
     const btn = document.getElementById('btn-room-list');
     const badge = document.getElementById('room-count-badge');
     const list = document.getElementById('room-list');
     
-    list.innerHTML = ''; // リストをリセット
+    list.innerHTML = ''; 
 
     if (rooms.length === 0) {
         if(btn) btn.style.display = 'none';
@@ -187,30 +322,24 @@ socket.on('update_room_list', (rooms) => {
     if(btn) btn.style.display = 'block'; 
     if(badge) badge.innerText = rooms.length; 
 
-    // rooms は [{ id: '123456', creator: 'ユーザー名' }, ...] の配列
     rooms.forEach(room => {
         const roomBtn = document.createElement('button');
         roomBtn.className = 'room-item-btn';
-        // ▼▼▼ 修正: IDの右側に作成者名を表示 ▼▼▼
         roomBtn.innerHTML = `
             <span><i class="fas fa-hashtag"></i> ${escapeHtml(room.id)}</span>
             <span style="font-size:0.85rem; color:#aaa; margin-left: auto;">
                 <i class="fas fa-user"></i> ${escapeHtml(room.creator)}
             </span>
         `;
-        // ▲▲▲ ここまで ▲▲▲
         roomBtn.onclick = () => {
             document.getElementById('room-input').value = room.id;
             toggleRoomList(); 
             joinRoom();
         };
-        
         list.appendChild(roomBtn);
     });
 });
-// ▲▲▲ ここまで ▲▲▲
 
-// モーダル開閉関数
 function toggleRoomList() {
     const modal = document.getElementById('room-list-modal');
     if (modal.style.display === 'flex') {
@@ -219,16 +348,13 @@ function toggleRoomList() {
         modal.style.display = 'flex';
     }
 }
-// ▲▲▲ ここまで ▲▲▲
 
-// ▼▼▼ 追加: 対戦履歴モーダルの制御と表示 ▼▼▼
 function toggleHistory() {
     const modal = document.getElementById('history-modal');
     if (!modal) return;
     if (modal.style.display === 'flex') {
         modal.style.display = 'none';
     } else {
-        // ログインチェック
         if (!currentUser) {
             alert("履歴を見るにはログインしてください");
             toggleLogin();
@@ -238,12 +364,10 @@ function toggleHistory() {
         document.getElementById('history-loading').style.display = 'block';
         document.getElementById('history-list').style.display = 'none';
         document.getElementById('history-error').style.display = 'none';
-        // サーバーへ履歴データを要求
         socket.emit('request_match_history', currentUser.id);
     }
 }
 
-// ▼▼▼ 履歴データの受信・表示処理 (詳細機能追加) ▼▼▼
 socket.on('match_history_data', (history) => {
     const loading = document.getElementById('history-loading');
     const list = document.getElementById('history-list');
@@ -284,23 +408,20 @@ socket.on('match_history_data', (history) => {
     });
 });
 
-// 通算成績をリクエストする関数
 window.showVsStats = function(opponentId, opponentName) {
     if (!currentUser) return;
-    // 名前を保持してサーバーへリクエスト
     window.currentCheckingOpponentName = opponentName;
     socket.emit('request_vs_stats', { 
         myId: currentUser.id, 
         opponentId: opponentId 
     });
 };
-// 通算成績の受信・表示
+
 socket.on('vs_stats_result', (data) => {
     const name = window.currentCheckingOpponentName || '相手';
     const wins = data.wins;
     const losses = data.losses;
     const total = wins + losses;
-    // 要素取得
     const modal = document.getElementById('vs-stats-modal');
     const title = document.getElementById('vs-stats-title');
     const winEl = document.getElementById('vs-stats-win');
@@ -308,28 +429,25 @@ socket.on('vs_stats_result', (data) => {
     const barWin = document.getElementById('bar-win');
     const barLose = document.getElementById('bar-lose');
     const list = document.getElementById('vs-history-list');
-    // 数値セット
+    
     title.innerText = `${escapeHtml(name)} との戦績`;
     winEl.innerText = wins;
     loseEl.innerText = losses;
-    // バーの幅とパーセント文字の設定
+    
     if (total > 0) {
-        // パーセント計算 (四捨五入)
         const winPct = Math.round((wins / total) * 100);
         const losePct = 100 - winPct;
         barWin.style.width = `${winPct}%`;
         barLose.style.width = `${losePct}%`;
-        // 幅が狭すぎる(15%未満)ときは文字を隠す（見づらいため）
         barWin.innerText = winPct >= 15 ? `${winPct}%` : '';
         barLose.innerText = losePct >= 15 ? `${losePct}%` : '';
     } else {
-        // データがない場合
         barWin.style.width = '50%';
         barLose.style.width = '50%';
         barWin.innerText = '';
         barLose.innerText = '';
     }
-    // 詳細リストの生成 (ここは変更なし)
+    
     list.innerHTML = '';
     if (data.history && data.history.length > 0) {
         data.history.forEach(item => {
@@ -358,14 +476,11 @@ socket.on('vs_stats_result', (data) => {
     }
     modal.style.display = 'flex';
 });
-// ▲▲▲ ここまで ▲▲▲
 
-// モーダルを閉じる関数
 window.closeVsStats = function() {
     const modal = document.getElementById('vs-stats-modal');
     if (modal) modal.style.display = 'none';
 };
-// ▲▲▲ ここまで ▲▲▲
 
 socket.on('game_start', () => {
     document.getElementById('result-overlay').style.display = 'none';
@@ -380,7 +495,6 @@ socket.on('game_start', () => {
     startCountdown();
 });
 
-// --- カウントダウン機能 ---
 function startCountdown() {
     let count = 3; 
     const drawCount = (text) => {
@@ -426,14 +540,13 @@ socket.on('receive_attack', (lines) => {
   if (isPlaying) addGarbage(lines);
 });
 
-// --- ゲームエンジン ---
 function initGame() {
     stopGameLoop(); 
-    document.body.classList.add('game-active'); // 追加
+    document.body.classList.add('game-active'); 
 
     board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     
-    level = 1; // 全モード共通でレベル1スタート
+    level = 1; 
     score = 0; lines = 0; combo = -1;
     bag = []; nextQueue = []; holdType = null; canHold = true;
     
@@ -450,16 +563,13 @@ function initGame() {
     spawn();
     updateUI();
     
-    // ▼▼▼ モード別ロジック分岐 ▼▼▼
     if(levelTimer) clearInterval(levelTimer);
     if(garbageTimer) clearInterval(garbageTimer);
 
     if (currentDifficulty === 'easy') {
-        // Easy: レベルアップなし
         console.log("Mode: Easy");
     } 
     else if (currentDifficulty === 'normal') {
-        // Normal: 30秒ごとにレベルアップ
         console.log("Mode: Normal");
         levelTimer = setInterval(() => {
             if (level < 20) {
@@ -470,7 +580,6 @@ function initGame() {
         }, 30000);
     } 
     else if (currentDifficulty === 'hard') {
-        // Hard: 30秒ごとにレベルアップ ＋ 20秒ごとにお邪魔ライン発生
         console.log("Mode: Hard");
         levelTimer = setInterval(() => {
             if (level < 20) {
@@ -540,7 +649,6 @@ function clearLines() {
   updateUI();
 }
 
-// --- ポーズ機能 ---
 function togglePause() {
     if (!isPlaying && !isPaused) return;
     if (myRoomId && !myRoomId.startsWith('__solo_')) return; 
@@ -557,7 +665,6 @@ function togglePause() {
         if(modal) modal.style.display = 'none';
         lastTime = 0; 
         
-        // 再開時のタイマーセット
         if (currentDifficulty === 'normal' || currentDifficulty === 'hard') {
             levelTimer = setInterval(() => {
                 if (level < 20) {
@@ -581,7 +688,6 @@ function togglePause() {
     }
 }
 
-// 描画関連
 function drawBlock(c, x, y, color, size = BLOCK, isGhost = false) {
     if (isGhost) {
         c.fillStyle = color; c.globalAlpha = 0.3; c.fillRect(x * size, y * size, size - 1, size - 1);
@@ -593,7 +699,6 @@ function drawBlock(c, x, y, color, size = BLOCK, isGhost = false) {
     }
 }
 
-// ▼▼▼ 修正: drawOpponent 関数を復活 ▼▼▼
 function drawOpponent(opBoard, opCurrent) {
     if (!opponentCtx) return;
     opponentCtx.clearRect(0, 0, opponentCanvas.width, opponentCanvas.height);
@@ -609,7 +714,6 @@ function drawOpponent(opBoard, opCurrent) {
         ));
     }
 }
-// ▲▲▲ ここまで ▲▲▲
 
 function draw() {
   if (!ctx) return;
@@ -700,21 +804,18 @@ function attemptRotation(dir) {
 function showResult(isWin) {
     const overlay = document.getElementById('result-overlay');
     const title = document.getElementById('result-title');
-    const scoreVal = document.getElementById('result-score'); // スコア表示の親div
-    const scoreNum = document.getElementById('final-score-value'); // 数字部分
+    const scoreVal = document.getElementById('result-score'); 
+    const scoreNum = document.getElementById('final-score-value'); 
 
     overlay.style.display = 'flex';
     
-    // ▼▼▼ 修正: 対戦モードならスコアを隠す、ソロなら表示 ▼▼▼
     if (isWin === "over") {
-        // ソロモード
         if (scoreNum) scoreNum.innerText = score.toLocaleString();
         if (scoreVal) scoreVal.style.display = 'block';
         title.innerText = "GAME OVER";
         title.style.color = "#ff4444"; 
     } else {
-        // 対戦モード (勝ち/負け)
-        if (scoreVal) scoreVal.style.display = 'none'; // スコアを隠す
+        if (scoreVal) scoreVal.style.display = 'none'; 
         
         if (isWin === true) {
             title.innerText = "YOU WIN!";
@@ -724,7 +825,6 @@ function showResult(isWin) {
             title.style.color = "#ff4444";
         }
     }
-    // ▲▲▲ ここまで ▲▲▲
 }
 
 function handleGameOver() {
@@ -840,6 +940,9 @@ function update(time = 0) {
 }
 
 document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (!e.key) return;
+
   if (e.key === 'Escape' || e.key.toLowerCase() === 'p') { togglePause(); return; }
   if (isPaused) return; 
   if (document.getElementById('join-screen').style.display !== 'none') return;
@@ -900,7 +1003,11 @@ function setupMobileControls() {
   };
 
   const startAction = (actionName, e) => {
-      e.preventDefault(); if (!isPlaying) return; 
+    if (e.cancelable) {
+        e.preventDefault();
+    }
+    
+    if (!isPlaying) return;
       actions[actionName]();
       if (['left', 'right', 'down'].includes(actionName)) {
           if (moveInterval) clearInterval(moveInterval);
@@ -928,7 +1035,7 @@ socket.on('opponent_board', (data) => {
     drawOpponent(data.board, data.current);
 });
 function backToTop() {
-    document.body.classList.remove('game-active'); // 追加
+    document.body.classList.remove('game-active'); 
     window.location.reload(); 
 }
 function toggleRules() { const m = document.getElementById('rules-modal'); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
@@ -943,13 +1050,12 @@ function toggleRanking() {
         } else {
             if(guestAlert) guestAlert.style.display = 'none';
         }
-        rankingDifficulty = 'normal'; // 初期表示はNormal
+        rankingDifficulty = 'normal'; 
         updateRankingFilterButtons();
         switchRankingTab('global'); 
     }
 }
 
-// ランキングタブ切り替え (Global / My)
 function switchRankingTab(mode) {
     rankingTabMode = mode;
     const list = document.getElementById('ranking-list');
@@ -971,7 +1077,6 @@ function switchRankingTab(mode) {
     list.innerHTML = '<p style="text-align:center;">読み込み中...</p>';
 }
 
-// ▼▼▼ ランキング難易度切り替え ▼▼▼
 function changeRankingDiff(diff) {
     rankingDifficulty = diff;
     updateRankingFilterButtons();
@@ -989,7 +1094,6 @@ function updateRankingFilterButtons() {
     });
 }
 
-// ▼▼▼ ランキングデータ受信処理 (難易度フィルター対応) ▼▼▼
 socket.on('ranking_data', (data) => {
   const list = document.getElementById('ranking-list');
   list.innerHTML = ''; 
@@ -1016,7 +1120,6 @@ document.addEventListener('click', (e) => {
     if (m.classList.contains('active') && !m.contains(e.target) && !document.querySelector('.mobile-menu-btn').contains(e.target)) m.classList.remove('active');
 });
 
-// Auth関連
 const nameInputEl = document.getElementById('name-input');
 const saveNameBtn = document.getElementById('btn-save-name');
 
@@ -1039,24 +1142,78 @@ if (nameInputEl) {
 async function saveNameFromInput() {
     const newName = nameInputEl.value.trim();
     const msgEl = document.getElementById('save-msg');
+    console.log("[DEBUG] saveNameFromInput: 名前変更開始", newName);
+    
     if (!newName) return;
+    if (!currentUser) {
+        console.warn("[DEBUG] saveNameFromInput: currentUserがnullです");
+        return;
+    }
+
     try {
-        const { data, error } = await supabaseClient.auth.updateUser({ data: { display_name: newName } });
+        const { error } = await supabaseClient
+            .from('profiles')
+            .upsert({ 
+                user_id: currentUser.id, 
+                name: newName 
+            });
+
         if (error) throw error;
-        if (currentUser) {
-            const { error: dbError } = await supabaseClient.from('scores').update({ name: newName }).eq('user_id', currentUser.id);
-            if (dbError) throw dbError;
+        console.log("[DEBUG] saveNameFromInput: DB更新成功");
+
+        originalName = newName;
+        if (currentUser.user_metadata) {
+            currentUser.user_metadata.display_name = newName;
+        } else {
+            currentUser.user_metadata = { display_name: newName };
         }
-        originalName = newName; 
-        saveNameBtn.style.display = 'none'; 
+
+        saveNameBtn.style.display = 'none';
+        
+        const pcNameDisplay = document.getElementById('user-name-display');
+        if(pcNameDisplay) pcNameDisplay.innerText = newName;
+        updateUserUI(currentUser);
+
         if(msgEl) {
-            msgEl.innerText = "名前を変更しました！"; msgEl.style.color = "#4ecca3";
+            msgEl.innerText = "名前を変更しました！"; 
+            msgEl.style.color = "#4ecca3";
             setTimeout(() => { msgEl.innerText = ""; }, 3000);
         }
     } catch (error) {
-        console.error(error);
-        if(msgEl) { msgEl.innerText = "エラー: " + error.message; msgEl.style.color = "#ff4444"; }
+        console.error("[DEBUG] Name Save Error:", error);
+        if(msgEl) { 
+            msgEl.innerText = "保存エラー: " + error.message; 
+            msgEl.style.color = "#ff4444"; 
+        }
     }
+}
+
+async function fetchUserProfile(user) {
+    console.log("[DEBUG] fetchUserProfile: 開始 user_id =", user?.id);
+    if (!user || !user.id) return user;
+    
+    try {
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Timeout")), 1000)
+        );
+
+        const dbPromise = supabaseClient
+            .from('profiles')
+            .select('name')
+            .eq('user_id', user.id)
+            .maybeSingle(); 
+
+        const { data, error } = await Promise.race([dbPromise, timeoutPromise]);
+            
+        if (data && data.name) {
+            console.log("[DEBUG] fetchUserProfile: 名前取得成功", data.name);
+            if (!user.user_metadata) user.user_metadata = {};
+            user.user_metadata.display_name = data.name;
+        }
+    } catch (e) {
+        console.warn("[DEBUG] fetchUserProfile: エラーまたはタイムアウト", e);
+    }
+    return user;
 }
 
 let isLoginMode = true; 
@@ -1074,57 +1231,148 @@ function updateAuthModalUI() {
     errorMsg.innerText = ""; 
     if (isLoginMode) { title.innerText = "ログイン"; btn.innerText = "ログインする"; text.innerText = "アカウントをお持ちでないですか？"; link.innerText = "新規登録はこちら"; } else { title.innerText = "新規登録"; btn.innerText = "登録して始める"; text.innerText = "すでにアカウントをお持ちですか？"; link.innerText = "ログインはこちら"; }
 }
+
 async function handleAuth() {
     const email = document.getElementById('email-input').value;
     const password = document.getElementById('password-input').value;
     const errorMsg = document.getElementById('auth-error-msg');
-    if (!email || !password) { errorMsg.innerText = "メールとパスワードを入力してください"; return; }
+    
+    console.log(`[DEBUG] handleAuth called. Mode: ${isLoginMode ? 'Login' : 'SignUp'}, Email: ${email}`);
+
+    if (!email || !password) { 
+        errorMsg.innerText = "メールとパスワードを入力してください"; 
+        console.warn("[DEBUG] handleAuth: 入力不足");
+        return; 
+    }
+    
     try {
         let result;
         if (isLoginMode) {
             result = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
         } else {
-            result = await supabaseClient.auth.signUp({ email: email, password: password, options: { data: { display_name: email.split('@')[0] } } });
+            result = await supabaseClient.auth.signUp({ 
+                email: email, 
+                password: password, 
+                options: { data: { display_name: email.split('@')[0] } } 
+            });
         }
+        
+        console.log("[DEBUG] Supabase Auth Result:", result);
+
         if (result.error) throw result.error;
-        toggleLogin();
-    } catch (error) { console.error(error); errorMsg.innerText = "エラー: " + error.message; }
-}
-async function logout() { await supabaseClient.auth.signOut(); }
-supabaseClient.auth.onAuthStateChange((event, session) => {
-    const pcLoginBtn = document.getElementById('btn-login');
-    const pcUserInfo = document.getElementById('user-info');
-    const pcNameDisplay = document.getElementById('user-name-display');
-    const mobileMenu = document.getElementById('mobile-menu-list');
-    const mobileLoginBtn = document.getElementById('btn-login-mobile');
-    const nameInput = document.getElementById('name-input'); 
-    const saveNameBtn = document.getElementById('btn-save-name');
-    let mobileUserInfo = document.getElementById('mobile-user-info');
-    if (!mobileUserInfo) {
-        mobileUserInfo = document.createElement('div'); mobileUserInfo.id = 'mobile-user-info'; mobileUserInfo.className = 'menu-item'; mobileUserInfo.style.borderBottom = '1px solid #333'; mobileUserInfo.style.cursor = 'default'; mobileUserInfo.style.backgroundColor = 'rgba(255,255,255,0.05)';
+
+        if (result.data.session) {
+            console.log("[DEBUG] handleAuth: Session exists. 更新処理を開始します。");
+            let tempUser = result.data.session.user;
+            currentUser = await fetchUserProfile(tempUser);
+            updateUserUI(currentUser);
+            toggleLogin(); 
+            document.getElementById('email-input').value = "";
+            document.getElementById('password-input').value = "";
+            console.log("[DEBUG] handleAuth: 更新完了、モーダルを閉じました。");
+        } else if (result.data.user && !result.data.session) {
+            console.warn("[DEBUG] handleAuth: User created but NO session. (Email confirm needed?)");
+            errorMsg.innerText = "確認メールを送信しました。リンクをクリックしてください。";
+        }
+
+    } catch (error) { 
+        console.error("[DEBUG] handleAuth Error:", error);
+        if (error.message.includes("User already registered")) {
+            errorMsg.innerText = "既に登録されています。ログインしてください。";
+        } else if (error.message.includes("Invalid login credentials")) {
+            errorMsg.innerText = "メールアドレスかパスワードが間違っています。";
+        } else {
+            errorMsg.innerText = "エラー: " + error.message; 
+        }
     }
-    if (session) {
-        currentUser = session.user;
-        const displayName = currentUser.user_metadata.display_name || currentUser.email.split('@')[0];
-        originalName = displayName;
-        if(pcLoginBtn) pcLoginBtn.style.display = 'none';
-        if(pcUserInfo) { pcUserInfo.style.display = 'flex'; pcNameDisplay.innerText = displayName; }
-        if(mobileLoginBtn) mobileLoginBtn.style.display = 'none';
-        mobileUserInfo.innerHTML = `<div style="color:var(--accent); font-weight:bold; margin-bottom:5px;"><i class="fas fa-user"></i> ${escapeHtml(displayName)}</div><button onclick="logout(); toggleMobileMenu();" style="background:#333; border:1px solid #555; color:#ccc; padding:10px; border-radius:4px; cursor:pointer; width:100%; box-sizing: border-box;">ログアウト</button>`;
-        if (!document.getElementById('mobile-user-info')) { mobileMenu.insertBefore(mobileUserInfo, mobileMenu.firstChild); }
-        if (nameInput) { nameInput.value = displayName; nameInput.readOnly = false; nameInput.style.backgroundColor = "#000"; }
+}
+
+async function signInWithProvider(provider) {
+    console.log("[DEBUG] signInWithProvider called:", provider);
+    try {
+        if (provider === 'line') {
+            if (!auth0Client) {
+                alert("現在、LINEログインは利用できません。");
+                console.error("[DEBUG] signInWithProvider: auth0Client is null");
+                return;
+            }
+            await auth0Client.loginWithRedirect({
+                authorizationParams: {
+                    connection: 'line'
+                }
+            });
+        } else {
+            const redirectUrl = window.location.origin;
+            console.log("[DEBUG] Google Redirect URL:", redirectUrl);
+            const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                provider: provider,
+                options: { redirectTo: redirectUrl },
+            });
+            if (error) throw error;
+            console.log("[DEBUG] Google Login Redirecting...", data);
+        }
+    } catch (error) {
+        console.error("[DEBUG] signInWithProvider Error:", error);
+        alert("ログインエラー: " + error.message);
+    }
+}
+
+async function logout() {
+    console.log("[DEBUG] logout called");
+    if (auth0Client && await auth0Client.isAuthenticated()) {
+        console.log("[DEBUG] logout: Auth0 Logout");
+        auth0Client.logout({
+            logoutParams: {
+                returnTo: window.location.origin
+            }
+        });
     } else {
-        currentUser = null; originalName = "";
-        if(pcLoginBtn) pcLoginBtn.style.display = 'inline-block';
-        if(pcUserInfo) pcUserInfo.style.display = 'none';
-        if(mobileLoginBtn) mobileLoginBtn.style.display = 'block';
-        if (document.getElementById('mobile-user-info')) { mobileUserInfo.remove(); }
-        if (nameInput) { nameInput.value = ""; nameInput.readOnly = false; nameInput.style.backgroundColor = "#000"; }
-        if(saveNameBtn) saveNameBtn.style.display = 'none';
+        console.log("[DEBUG] logout: Supabase Logout");
+        await supabaseClient.auth.signOut();
+        window.location.reload();
+    }
+}
+
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    console.log(`[DEBUG] onAuthStateChange: Event=${event}`, session);
+
+    if (auth0Client && location.search.includes("code=")) {
+        console.log("[DEBUG] onAuthStateChange: Auth0 Callback処理中のためスキップ");
+        return;
+    }
+
+    if (session) {
+        console.log("[DEBUG] onAuthStateChange: セッションあり。ユーザー設定開始");
+        let tempUser = session.user;
+        
+        if (currentUser && currentUser.id === tempUser.id) {
+            console.log("[DEBUG] onAuthStateChange: 既にログイン済みのためUI更新スキップ");
+            return;
+        }
+
+        currentUser = await fetchUserProfile(tempUser);
+        updateUserUI(currentUser);
+    } else {
+        console.log("[DEBUG] onAuthStateChange: セッションなし");
+
+        if (isAuth0Initializing) {
+            console.log("[DEBUG] onAuthStateChange: Auth0初期化待ちのためログアウト保留");
+            return; 
+        }
+        
+        if (currentUser && currentUser.provider === 'auth0') {
+            console.log("[DEBUG] onAuthStateChange: Auth0ユーザーとしてログイン中のためログアウト回避");
+            return;
+        }
+
+        if (currentUser) {
+            console.log("[DEBUG] onAuthStateChange: ログアウト処理実行");
+            currentUser = null;
+            updateUserUI(null);
+        }
     }
 });
 
-// ▼▼▼ 追加: 抜け落ちていた escapeHtml 関数 ▼▼▼
 function escapeHtml(text) {
     if (!text) return 'Unknown';
     return text
@@ -1134,9 +1382,7 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-// ▲▲▲ ここまで ▲▲▲
 
-// ▼▼▼ タッチ判定 ▼▼▼
 function isTouchDevice() {
     return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
 }

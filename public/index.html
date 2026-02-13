@@ -329,6 +329,17 @@
             <span class="close-btn" onclick="toggleLogin()">&times;</span>
             <h2 id="auth-title">ログイン</h2>
             
+            <div class="social-login-section">
+                <button onclick="signInWithProvider('google')" class="social-btn google">
+                    <i class="fab fa-google"></i> Googleで続ける
+                </button>
+                <button onclick="signInWithProvider('line')" class="social-btn line">
+                    <i class="fab fa-line"></i> LINEで続ける
+                </button>
+            </div>
+            <div class="separator-line">
+                <span>または メールアドレス</span>
+            </div>
             <div class="input-group">
                 <p>メールアドレス</p>
                 <input type="email" id="email-input" placeholder="mail@example.com">
@@ -346,11 +357,17 @@
                 <span id="auth-switch-text">アカウントをお持ちでないですか？</span>
                 <a href="#" onclick="switchAuthMode(event)" style="color:var(--accent);">新規登録はこちら</a>
             </div>
+            
+            <div style="margin-top: 15px; font-size: 0.75rem; color: #888; text-align: center; border-top: 1px solid #333; padding-top: 10px;">
+                当ゲームはアカウント識別のためにメールアドレス等の情報を取得します。<br>
+                ログインすることで、これに同意したものとみなされます。
+            </div>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
